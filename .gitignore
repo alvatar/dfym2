@@ -1,0 +1,7 @@
+.emacs*
+.lein*
+.nrepl*
+/log
+/target
+/resources/public/js/out
+/resources/public/js/dfym.js
