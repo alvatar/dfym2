@@ -26,36 +26,41 @@
   (future (-event-msg-handler ev-msg)) ; Handle event-msgs on a thread pool
   )
 
-(defmethod -event-msg-handler :default ; Default/fallback case (no other matching handler)
-  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (let [session (:session ring-req)
-        uid (:uid session)]
-    (when ?reply-fn
-      (?reply-fn {:umatched-event-as-echoed-from-from-server event}))))
+;; (defmethod -event-msg-handler :default ; Default/fallback case (no other matching handler)
+;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+;;   (let [session (:session ring-req)
+;;         uid (:uid session)]
+;;     (when ?reply-fn
+;;       (?reply-fn {:umatched-event-as-echoed-from-from-server event}))))
 
-(defmethod -event-msg-handler :user/get
-  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (usecases/user-get (:user-id ?data))
-  (?reply-fn {:status :ok
-              :TODO ?data}))
+;; (defmethod -event-msg-handler :user/get
+;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+;;   (?reply-fn (usecases/user-get
+;;               (:user-id ?data))))
 
-(defmethod -event-msg-handler :user/set!
-  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (usecases/user-set! (:user-id ?data) (:user-data ?data))
-  (?reply-fn {:status :ok
-              :TODO ?data}))
+;; (defmethod -event-msg-handler :user/update!
+;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+;;   (?reply-fn (usecases/user-update!
+;;               (:user-id ?data)
+;;               (:user-data ?data))))
 
-(defmethod -event-msg-handler :files/get
-  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (usecases/files-get (:user-id ?data) (:filters ?data))
-  (?reply-fn {:status :ok
-              :TODO ?data}))
+;; (defmethod -event-msg-handler :files/get
+;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+;;   (?reply-fn (usecases/files-get
+;;               (:user-id ?data)
+;;               (:filters ?data))))
 
-(defmethod -event-msg-handler :files/resync!
-  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (usecases/files-resync! (:user-id ?data))
-  (?reply-fn {:status :ok
-              :TODO ?data}))
+;; (defmethod -event-msg-handler :files/tag!
+;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+;;   (?reply-fn (usecases/files-tag!
+;;               (:user-id ?data)
+;;               (:files ?data)
+;;               (:tag ?data))))
+
+;; (defmethod -event-msg-handler :files/resync!
+;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+;;   (?reply-fn (usecases/files-resync!
+;;               (:user-id ?data))})
 
 ;;
 ;; Controller
@@ -63,10 +68,10 @@
 
 (defrecord WebsocketController
     [sente]
-    component/Lifecycle
-    (start [component]
-      (assoc component
-             :sente
-             (sente/start-server-chsk-router! ch-chsk event-msg-handler)))
-    (stop [component]
-      component))
+  component/Lifecycle
+  (start [component]
+    (assoc component
+           :sente
+           (sente/start-server-chsk-router! ch-chsk event-msg-handler)))
+  (stop [component]
+    component))

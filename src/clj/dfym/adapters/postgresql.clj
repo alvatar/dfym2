@@ -13,13 +13,7 @@
             ;;-----
             [dfym.adapters :refer [RepositoryAdapter]]))
 
-(add-json-type json/generate-string json/parse-string)
-(add-jsonb-type json/generate-string json/parse-string)
 
-
-
-
-;; TODO: The PostgreSqlAdapter calls the right function for this
 (defrecord PostgreSqlAdapter []
 
   component/Lifecycle
@@ -29,13 +23,20 @@
   RepositoryAdapter
   (user-get [self user-id]
     "RESULT Get user data")
-  (user-update! [self user-id data]
+  (user-get-password [self user-id]
+    "RESULT user get pass")
+  (user-update! [self user-data]
     "RESUlT Update user data")
   (files-get [self user-id filters]
     "RESULT Get user files listing")
-  (files-resync! [self user-id]
-    "REsulT Resync user files listing with original source"))
+  (files-tag! [self user-id files tag]
+    "RESULT Files tag")
+  (files-update! [self user-id files]
+    "REsulT Update user files listing with original source"))
 
+
+;; (add-json-type json/generate-string json/parse-string)
+;; (add-jsonb-type json/generate-string json/parse-string)
 
 ;; ;; References:
 ;; ;; SQL
