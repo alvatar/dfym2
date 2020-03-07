@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   id="Livello_1"
+   data-name="Livello 1"
+   viewBox="0 0 17.67 31.91"
+   version="1.1"
+   sodipodi:docname="pause.svg"
+   inkscape:version="1.0beta2 (2b71d25, 2019-12-03)">
+  <metadata
+     id="metadata21">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs19" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     inkscape:document-rotation="0"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1151"
+     inkscape:window-height="752"
+     id="namedview17"
+     showgrid="false"
+     inkscape:zoom="20.275776"
+     inkscape:cx="8.835"
+     inkscape:cy="15.955"
+     inkscape:window-x="0"
+     inkscape:window-y="23"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="Livello_1" />
+  <title
+     id="title10">pause</title>
+  <rect
+     width="6.24"
+     height="31.91"
+     rx="3.12"
+     ry="3.12"
+     style="fill:#000000"
+     id="rect12" />
+  <rect
+     x="11.43"
+     width="6.24"
+     height="31.91"
+     rx="3.12"
+     ry="3.12"
+     style="fill:#000000"
+     id="rect14" />
+</svg>

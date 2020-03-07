@@ -1,0 +1,219 @@
+::-webkit-scrollbar {
+    width: 2px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+    background: #fff;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+    background: #000;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/*👇 for preload play/pause svg 😎*/
+body:after {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    z-index: -1;
+    content: url(/svg/play.svg)
+	     url(/svg/pause.svg);
+}
+
+.mejs__container {
+    background: #fff;
+    font-family: "VT323";
+    text-align: left;
+    vertical-align: top;
+    text-indent: 0;
+    width: 100% !important;
+    height: 40px !important;
+}
+
+.mejs__container .mejs__controls {
+    height: 100%;
+    background: transparent;
+    display: flex;
+}
+
+.mejs__container .mejs__controls div {
+    height: 100%;
+    width: 50px;
+    position: relative;
+}
+
+.mejs__controls .mejs__button button {
+    margin: 0;
+    padding: 0;
+    position: relative;
+    height: 100%;
+    width: 100%;
+    border: 0 !important;
+    background: transparent;
+    outline: none;
+}
+
+.mejs__controls .mejs__play:after {
+    position: absolute;
+    content: "";
+    background: url(/svg/play.svg) no-repeat;
+    width: 20px;
+    height: 20px;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    margin: auto;
+    transition: all 100ms linear;
+    pointer-events: none;
+}
+
+.mejs__controls .mejs__pause:after {
+    position: absolute;
+    content: "";
+    background: url(/svg/pause.svg) no-repeat;
+    width: 20px;
+    height: 20px;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    margin: auto;
+    transition: all 100ms linear;
+    pointer-events: none;
+}
+
+.mejs__time-buffering {
+    background-color: #000;
+}
+
+.mejs__time-loaded {
+    background-color: #000;
+}
+
+.mejs__time-current {
+    background-color: #f0f;
+}
+
+.mejs__currenttime {
+    color: #000;
+    font-size: 18px;
+}
+
+.mejs__duration {
+    color: #000;
+    font-size: 18px;
+}
+
+.mejs__time-handle-content {
+    color: #000;
+    background-color: #000;
+}
+
+
+/* .mejs__controls .mejs__time-rail span, */
+/* .mejs__controls .mejs__time-rail a { */
+/*     display: block; */
+/*     height: 100%; */
+/*     width: 100%; */
+/*     cursor: pointer; */
+/* } */
+
+/* .mejs__controls div.mejs__time-rail { */
+/*     padding-top: initial; */
+/*     height: 100%; */
+/* } */
+
+/* .mejs__controls .mejs__time-rail .mejs__time-total { */
+/*     margin: 0 */
+/* } */
+
+/* .mejs__container .mejs__controls .mejs__time { */
+/*     color: #fff; */
+/*     display: block; */
+/*     height: 40px; */
+/*     width: auto; */
+/*     padding: 0; */
+/*     line-height: 40px; */
+/*     overflow: hidden; */
+/*     text-align: center; */
+/*     -moz-box-sizing: content-box; */
+/*     -webkit-box-sizing: content-box; */
+/*     box-sizing: content-box; */
+/* } */
+
+/* .mejs__container .mejs__controls .mejs__time { */
+/*     position: absolute; */
+/*     color: rgba(256, 256, 256, 0.3); */
+/*     right: 10px; */
+/*     bottom: 0; */
+/*     line-height: 30px; */
+/*     margin: auto; */
+/*     font-family: 'VT323'; */
+/*     font-size: 20px; */
+/*     pointer-events: none; */
+/* } */
+
+/* .mejs__controls .mejs__time-rail .mejs__time-float-corner { */
+/*     display: none; */
+/* } */
+
+/* .mejs__controls .mejs__time-rail .mejs__time-float { */
+/*     position: absolute; */
+/*     background: #000; */
+/*     width: 46px; */
+/*     height: 20px; */
+/*     border: none; */
+/*     top: -25px; */
+/*     margin-left: -18px; */
+/*     text-align: center; */
+/*     color: #fff; */
+/*     border-radius: 3px; */
+/* } */
+
+/* .mejs__controls .mejs__time-rail .mejs__time-float-current { */
+/*     margin: 0; */
+/*     margin-top: 4px; */
+/*     width: 100%; */
+/*     display: block; */
+/*     text-align: center; */
+/*     left: 0; */
+/* } */
+
+/* .mejs__controls .mejs__time-rail .mejs__time-total { */
+/*     background: #292929; */
+/* } */
+
+/* .mejs__controls .mejs__time-rail .mejs__time-loaded { */
+/*     background: #3c3838; */
+/*     background-image: -webkit-gradient(linear, 0 0, 100% 100%, color-stop(.25, rgba(255, 255, 255, .2)), color-stop(.25, transparent), color-stop(.5, transparent), color-stop(.5, rgba(255, 255, 255, .2)), color-stop(.75, rgba(255, 255, 255, .2)), color-stop(.75, transparent), to(transparent)); */
+/*     background-image: -moz-linear-gradient( -45deg, rgba(255, 255, 255, .2) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, .2) 50%, rgba(255, 255, 255, .2) 75%, transparent 75%, transparent); */
+/*     background-size: 50px 50px; */
+/*     animation: move 3s linear infinite; */
+/*     opacity: 0.1; */
+/* } */
+
+/* .mejs__controls .mejs__time-rail .mejs__time-current { */
+/*     background: linear-gradient(to right, #03A9F4, #ff00ff); */
+/* } */
+
+.mejs__controls .mejs__button button:focus {
+    outline: none;
+}
+
+@-webkit-keyframes move {
+    0% {
+	background-position: 0 0;
+    }
+    100% {
+	background-position: 50px 50px;
+    }
+}
