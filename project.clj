@@ -5,9 +5,9 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
   :dependencies [[org.clojure/clojure "1.10.1"]
-                 [org.clojure/clojurescript "1.10.520"]
+                 [org.clojure/clojurescript "1.10.597"]
                  ;; Architecture
-                 [com.stuartsierra/component "0.4.0"]
+                 [com.stuartsierra/component "1.0.0"]
                  [environ "1.1.0"]
                  ;; Core
                  [com.taoensso/encore "2.119.0"]

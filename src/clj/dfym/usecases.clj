@@ -3,8 +3,8 @@
             [environ.core :refer [env]]
             [com.stuartsierra.component :as component]
             [buddy.hashers :as hashers]
+            [ring.util.response :as resp]
             ;; -----
-            [dfym.usecases.html :as html]
             [dfym.adapters :as adapters]))
 
 ;;
@@ -21,28 +21,26 @@
   (stop [component]
     component))
 
-(defn user-create [user-id user-name user-password]
-  (or (adapters/user-update! repository
-                             {:user
-                              {:id user-id
-                               :name user-name
-                               :password (hashers/derive user-password {:alg :bcrypt+sha512})}})
-      {:status :error
-       :code :data-error}))
-
-(defn user-login [user-id password]
+(defn user-check-password [user-name password]
   (letfn [(setter [pwd]
             (let [pwd (hashers/derive pwd)]
               (adapters/user-update! repository
                                      {:user
-                                      {:id user-id
+                                      {:name user-name
                                        :password pwd}})))]
-    (if (hashers/check password
-                       (adapters/user-get-password repository user-id)
-                       {:setter setter})
-      {:status :ok}
-      {:status :error
-       :code :unauthorized})))
+    (hashers/check password
+                   (adapters/user-get-password repository user-name)
+                   {:setter setter})))
+
+(defn user-create [user-name user-password]
+  'TODO
+  #_(or (adapters/user-creaete! repository
+                                {:user
+                                 {:id user-id
+                                  :name user-name
+                                  :password (hashers/derive user-password {:alg :bcrypt+sha512})}})
+        {:status :error
+         :code :data-error}))
 
 (defn user-get [user-id]
   (or (adapters/user-get repository user-id)
@@ -72,5 +70,3 @@
     {:status :error
      :code :service-unavailable}))
 
-(defn index [csrf-token]
-  (html/index csrf-token))

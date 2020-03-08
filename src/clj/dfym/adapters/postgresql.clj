@@ -24,7 +24,9 @@
   (user-get [self user-id]
     "RESULT Get user data")
   (user-get-password [self user-id]
-    "RESULT user get pass")
+    false)
+  (user-create! [self user-data]
+    "RESULT Create user")
   (user-update! [self user-data]
     "RESUlT Update user data")
   (files-get [self user-id filters]

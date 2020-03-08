@@ -7,6 +7,7 @@
   "An adapter for data repositories"
   (user-get [self user-id] "Get user data")
   (user-get-password [self user-id] "Get user data")
+  (user-create! [self user-data] "Create user")
   (user-update! [self user-data] "Update user data")
   (files-get [self user-id filters] "Get user files listing")
   (files-tag! [self user-id files tag] "Tag user files")

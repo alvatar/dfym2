@@ -5,6 +5,7 @@
    [cljs.core.async :as async :refer [<! >! put! take! chan]]
    [taoensso.sente :as sente :refer [cb-success?]]
    [taoensso.sente.packers.transit :as sente-transit]
+   [oops.core :refer [oget oset!]]
    [rum.core :as rum]
    [garden.core :refer [css]]
    [garden.stylesheet :as stylesheet]
@@ -56,10 +57,12 @@
          (do (when handler (handler resp))
              (when cb (cb resp))))))))
 
+(defn logout []
+  (oset! js/window "location.href" "/logout"))
+
 (defn get-user [user]
-  (js/alert "HELLO")
-  #_(build-request :user/get
-                 (fn [args] (log* "RECEIVED" args))))
+  (build-request :user/get
+                   (fn [args] (log* "RECEIVED" args))))
 
 ;;
 ;; UI Components
@@ -93,11 +96,8 @@
             :font-weight "normal"
             :padding "0px"
             :margin "5px 10px 15px 10px"
-            ;;:border-bottom "dotted"
-            ;;:border-width "2px"
             :cursor "pointer"}]
-   [:.dir {;:border-bottom "1px solid"
-           :font-weight "normal"}]
+   [:.dir {:font-weight "normal"}]
    [:.selected {:border-bottom "2px solid"
                 :font-weight "bold"}]
    [:.scroll {:overflow "auto"}]
@@ -205,7 +205,7 @@
     [:div#player
      [:audio {:controls "controls"}
       [:source {:src "https://www.dropbox.com/s/12fpcuwwmg8s7aj/02%20-%20Theme%20From%20Jack%20Johnson.mp3?raw=1"}]]]
-    [:div#menu-button {:on-click #(get-user 0)} "⚙"]]])
+    [:div#menu-button {:on-click logout} "⚙"]]])
 
 (defn make-player [player-html-element]
   (let [player (js/MediaElementPlayer.

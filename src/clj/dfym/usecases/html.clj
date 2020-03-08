@@ -1,6 +1,6 @@
 (ns dfym.usecases.html
   (:require [clojure.pprint :refer [pprint]]
-            [ring.middleware.anti-forgery :as anti-forgery]
+            [ring.util.anti-forgery :refer [anti-forgery-field]]
             [hiccup.core :refer :all]))
 
 (defn index [csrf-token]
@@ -23,3 +23,20 @@
      [:script {:src "https://unpkg.com/mediaplayer/browser.js" :type "text/javascript"}]
      ;; App
      [:script {:src "js/dfym.js" :type "text/javascript"}]]]))
+
+(defn login []
+  (html
+   [:html
+    [:head
+   [:meta {:charset "utf-8"}]
+   [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
+   ;; Normalize
+   [:link {:rel "stylesheet" :href "css/normalize.css"}]
+   [:link {:rel "stylesheet" :href "css/simplegrid.css"}]]
+    [:body
+     [:h1 "Login"]
+     [:form {:method "post"}
+      (anti-forgery-field)
+      [:input {:type "text" :placeholder "Username: " :name "username"}]
+      [:input {:type "password" :placeholder "Password: " :name "password"}]
+      [:input {:type "submit" :value "Submit"}]]]]))
