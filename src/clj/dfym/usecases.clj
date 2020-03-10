@@ -21,36 +21,33 @@
   (stop [component]
     component))
 
-(defn user-check-password [user-name password]
+(defn user-check-password [user-id password]
   (letfn [(setter [pwd]
             (let [pwd (hashers/derive pwd)]
               (adapters/user-update! repository
-                                     {:user
-                                      {:name user-name
-                                       :password pwd}})))]
+                                     {:id user-id
+                                      :password pwd})))]
     (hashers/check password
                    (adapters/user-get-password repository user-name)
                    {:setter setter})))
 
 (defn user-create [user-name user-password]
-  'TODO
-  #_(or (adapters/user-creaete! repository
-                                {:user
-                                 {:id user-id
-                                  :name user-name
-                                  :password (hashers/derive user-password {:alg :bcrypt+sha512})}})
-        {:status :error
-         :code :data-error}))
+  (or (adapters/user-create! repository
+                             {:id user-id
+                              :name user-name
+                              :password (hashers/derive user-password {:alg :bcrypt+sha512})})
+      {:status :error
+       :code :data-error}))
 
 (defn user-get [user-id]
   (or (adapters/user-get repository user-id)
       {:status :error
        :code :data-error}))
 
-(defn user-update! [user-id user-data]
-  (or (adapters/user-update! repository user-id)
-        {:status :error
-         :code :data-error}))
+(defn user-update! [user-map]
+  (or (adapters/user-update! repository user-map)
+      {:status :error
+       :code :data-error}))
 
 (defn files-get [user-id filter]
   (or (adapters/files-get repository user-id {})
