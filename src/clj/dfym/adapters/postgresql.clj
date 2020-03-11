@@ -79,7 +79,7 @@
 (defn user-update-by! [by]
   (fn [user-map]
     (sql/update! db :users (-> user-map (dissoc :id) ->snake_case)
-                 [(format "%s  = ?" (name by)) (:id user-map)])))
+                 [(format "%s  = ?" (case-shift/->snake_case by)) (:id user-map)])))
 
 ;;
 ;; Adapter
@@ -108,11 +108,11 @@
   ;;
   RepositoryAdapter
 
-  (user-get [self user-id]
-    ((user-get-by :id) user-id))
+  (user-get [self user-name]
+    ((user-get-by :user-name) user-name))
 
-  (user-get-password [self user-id]
-    (single-result (sql/query db ["SELECT password FROM users WHERE id = ?" user-id])))
+  (user-get-password [self user-name]
+    (single-result (sql/query db ["SELECT password FROM users WHERE user_name = ?" user-name])))
 
   (user-create! [self user-data]
     (let [{:keys [name password first-name family-name]} user-data]
@@ -126,7 +126,11 @@ RETURNING id
                       name (hashers/derive password) first-name family-name]))))
 
   (user-update! [self user-data]
-    ((user-update-by! :id) user-data))
+    (let [{:keys [id user-name]} user-data]
+      (cond
+        id ((user-update-by! :id) user-data)
+        user-name ((user-update-by! :user-data) user-data)
+        :else (throw (Exception. "No id or user-name in user data for user-update!")))))
 
   (files-get [self user-id filters]
     'TODO)

@@ -21,11 +21,11 @@
   (stop [component]
     component))
 
-(defn user-check-password [user-id password]
+(defn user-check-password [user-name password]
   (letfn [(setter [pwd]
             (let [pwd (hashers/derive pwd)]
               (adapters/user-update! repository
-                                     {:id user-id
+                                     {:user-name user-name
                                       :password pwd})))]
     (hashers/check password
                    (adapters/user-get-password repository user-name)
@@ -33,8 +33,7 @@
 
 (defn user-create [user-name user-password]
   (or (adapters/user-create! repository
-                             {:id user-id
-                              :name user-name
+                             {:user-name user-name
                               :password (hashers/derive user-password {:alg :bcrypt+sha512})})
       {:status :error
        :code :data-error}))

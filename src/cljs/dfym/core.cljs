@@ -110,10 +110,6 @@
    [:#controls {:width "100%"
                 :position "fixed"
                 :bottom 0}]
-   [:#player {:width "-webkit-calc(100% - 40px); -moz-calc(100% - 40px); calc(100% - 40px)"
-              :float "left"
-              :border-top "solid 2px"
-              :border-bottom "solid 2px"}]
    [:#menu-button {:float "left"
                    :width "40px"
                    :height "40px"

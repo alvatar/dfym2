@@ -12,6 +12,8 @@
      ;; Normalize
      [:link {:rel "stylesheet" :href "css/normalize.css"}]
      [:link {:rel "stylesheet" :href "css/simplegrid.css"}]
+     ;; Special
+     [:link {:rel "stylesheet" :href "css/special.css"}]
      ;; Media player
      [:script {:src "mediaplayer/mediaelement-and-player.min.js" :type "text/javascript"}]
      [:link {:rel "stylesheet" :href "mediaplayer/mediaelementplayer.min.css"}]
@@ -24,17 +26,20 @@
      ;; App
      [:script {:src "js/dfym.js" :type "text/javascript"}]]]))
 
-(defn login []
+(defn login [flash]
   (html
    [:html
     [:head
-   [:meta {:charset "utf-8"}]
-   [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
-   ;; Normalize
-   [:link {:rel "stylesheet" :href "css/normalize.css"}]
-   [:link {:rel "stylesheet" :href "css/simplegrid.css"}]]
+     [:meta {:charset "utf-8"}]
+     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
+     ;; Normalize
+     [:link {:rel "stylesheet" :href "css/normalize.css"}]
+     [:link {:rel "stylesheet" :href "css/simplegrid.css"}]
+     ;; Special
+     [:link {:rel "stylesheet" :href "css/special.css"}]]
     [:body
      [:h1 "Login"]
+     [:h2 flash]
      [:form {:method "post"}
       (anti-forgery-field)
       [:input {:type "text" :placeholder "Username: " :name "username"}]

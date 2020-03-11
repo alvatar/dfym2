@@ -57,7 +57,7 @@
   (ok (html/index (:anti-forgery-token req))))
 
 (defn login [req]
-  (ok (html/login)))
+  (ok (html/login (:flash req))))
 
 (defn login-authenticate [req]
   (let [username (get-in req [:form-params "username"])
@@ -68,7 +68,8 @@
             updated-session (assoc session :identity (keyword username))]
         (-> (redirect (or next-url "/"))
             (assoc :session updated-session)))
-      (redirect "/login"))))
+      (-> (redirect "/login")
+          (assoc :flash "Wrong Username or Password")))))
 
 (defn logout [req]
   (-> (redirect "/login")
