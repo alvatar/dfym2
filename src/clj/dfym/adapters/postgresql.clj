@@ -79,7 +79,7 @@
 (defn user-update-by! [by]
   (fn [user-map]
     (sql/update! db :users (-> user-map (dissoc :id) ->snake_case)
-                 [(format "%s  = ?" (case-shift/->snake_case by)) (:id user-map)])))
+                 [(format "%s  = ?" (keyword->column by)) (:id user-map)])))
 
 ;;
 ;; Adapter
@@ -110,9 +110,6 @@
 
   (user-get [self user-name]
     ((user-get-by :user-name) user-name))
-
-  (user-get-password [self user-name]
-    (single-result (sql/query db ["SELECT password FROM users WHERE user_name = ?" user-name])))
 
   (user-create! [self user-data]
     (let [{:keys [name password first-name family-name]} user-data]
@@ -155,7 +152,8 @@ CREATE TABLE users (
   user_name       VARCHAR(128) NOT NULL UNIQUE,
   password        VARCHAR(256) NOT NULL,
   first_name      VARCHAR(256),
-  family_name     VARCHAR(256)
+  family_name     VARCHAR(256),
+  dropbox_token   VARCHAR(256)
 )
 "
                             ])
@@ -168,5 +166,3 @@ CREATE TABLE users (
 
 ;; (require '[dfym.adapters.postgresql :as db])
 
-(defn test-fn []
-  (adapters/user-get-password (PostgreSqlAdapter.) 1))

@@ -25,26 +25,8 @@
 (timbre/set-level! :debug)
 
 ;;
-;; Event Handlers
-;;
-
-(defmethod client/-event-msg-handler :chsk/state
-  [{:as ev-msg :keys [?data]}]
-  (let [[old-state-map new-state-map] (have vector? ?data)]
-    (when (:first-open? new-state-map)
-      (log* new-state-map))))
-
-(defmethod client/-event-msg-handler :chsk/handshake
-  [{:as ev-msg :keys [?data]}]
-  (let [[?user ?csrf-token ?handshake-data] ?data]
-    ;; (reset! (:user-id app-state) ?user)
-    (when-not (= ?user :taoensso.sente/nil-uid)
-      (log* "HANDSHAKE"))))
-
-;;
 ;; Actions
 ;;
-
 
 (defn build-request [id & [handler]]
   (fn [data & [cb]]
@@ -65,6 +47,25 @@
                    (fn [args] (log* "RECEIVED" args))))
 
 ;;
+;; Event Handlers
+;;
+
+(defmethod client/-event-msg-handler :chsk/state
+  [{:as ev-msg :keys [?data]}]
+  (let [[old-state-map new-state-map] (have vector? ?data)]
+    (when (:first-open? new-state-map)
+      (log* "New state: " new-state-map))))
+
+(defmethod client/-event-msg-handler :chsk/handshake
+  [{:as ev-msg :keys [?data uid]}]
+  (js/console.log ev-msg)
+  (let [[?user & _] ?data]
+    (when-not ?user
+      (js/alert "Internal Error: loading user")
+      (logout))
+    (reset! globals/user ?user)))
+
+;;
 ;; UI Components
 ;;
 
@@ -79,10 +80,11 @@
    [:h3 {:font-size "18px"
          :padding "5px"
          :margin "5px"}]
-   [:.fright {:float "right"}]
+   [:.rfloat {:float "right"}]
+   [:.lfloat {:float "left"}]
    [:.top-operations {:float "right"
                       :font-size "14px"
-                      :font-width "normal"
+                      :font-weight "bold"
                       :margin "0 10px 0 0"
                       :cursor "pointer"}]
    [:.tag {:font-size "18px"
@@ -126,7 +128,7 @@
   (goog.style/setStyles @style-node styles)
   (reset! style-node (goog.style/installStyles styles)))
 
-(rum/defc app []
+(rum/defc app < rum/reactive []
   [:div.no-scroll {:style {:width "100%" :height "100%"}}
    [:div {:style {:padding "20px"}}
     [:div.col-1-4 {:style {:padding "0 8px 0 20px"}}
@@ -160,10 +162,10 @@
      [:.div.panel-bottom]]
     [:div.col-2-4 {:style {:width "50%"}}
      [:div.panel
-      [:div
-       [:h2 "FILTERED FILES"
-        [:div.top-operations "Deselect_All"]
-        [:div.top-operations "Select_All"]]]
+      [:h2 "FILTERED FILES"
+       [:div.top-operations {:style {:font-weight "normal"}} "[Logged in as: " (:user-name (rum/react globals/user)) "]"]
+       [:div.top-operations "Deselect_All"]
+       [:div.top-operations "Select_All"]]
       [:div
        [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
        [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]

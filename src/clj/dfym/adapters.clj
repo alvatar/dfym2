@@ -5,8 +5,8 @@
 
 (defprotocol RepositoryAdapter
   "An adapter for data repositories"
+
   (user-get [self user-name] "Get user data")
-  (user-get-password [self user-name] "Get user data")
   (user-create! [self user-data] "Create user")
   (user-update! [self user-data] "Update user data")
   (files-get [self user-id filters] "Get user files listing")
@@ -15,4 +15,6 @@
 
 (defprotocol FileStorageAdapter
   "An adapter for file storages"
-  (files-sync [self user-id] "Get list of files from the storage"))
+
+  (file-storage-token [self code] "Get a user token")
+  (file-storage-sync [self user-id] "Get list of files from the storage"))

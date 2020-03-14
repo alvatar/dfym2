@@ -7,62 +7,64 @@
             ;; -----
             [dfym.adapters :as adapters]))
 
-;;
-;; Use Cases
-;;
-
 (defrecord UseCases [repository file-storage]
   component/Lifecycle
   (start [component]
     (println "Starting Use Cases...")
     (def repository (:repository component))
-    (def file-storage (:files-storage component))
+    (def file-storage (:file-storage component))
+    (when-not (and repository file-storage)
+      (throw (Exception. "usecases require a repository and a file storage")))
     component)
   (stop [component]
     component))
 
-(defn user-check-password [user-name password]
+;;
+;; User
+;;
+
+(defn user-check-password [user-name unhashed-password]
   (letfn [(setter [pwd]
             (let [pwd (hashers/derive pwd)]
               (adapters/user-update! repository
                                      {:user-name user-name
                                       :password pwd})))]
-    (hashers/check password
-                   (adapters/user-get-password repository user-name)
-                   {:setter setter})))
+    (let [{:keys [id password] :as user} (adapters/user-get repository user-name)]
+      (when (hashers/check unhashed-password
+                           password
+                           {:setter setter})
+        (select-keys user [:id :user-name :dropbox-token])))))
 
 (defn user-create [user-name user-password]
-  (or (adapters/user-create! repository
-                             {:user-name user-name
-                              :password (hashers/derive user-password {:alg :bcrypt+sha512})})
-      {:status :error
-       :code :data-error}))
+  (adapters/user-create! repository
+                         {:user-name user-name
+                          :password (hashers/derive user-password {:alg :bcrypt+sha512})}))
+
+(defn user-get-token [user-id tmp-code]
+  (if-let [token (adapters/file-storage-token file-storage tmp-code)]
+    (adapters/user-update! repository {:id user-id :dropbox-token token})
+    (throw (Exception. "no token received from Dropbox"))))
 
 (defn user-get [user-id]
-  (or (adapters/user-get repository user-id)
-      {:status :error
-       :code :data-error}))
+  (adapters/user-get repository user-id))
 
 (defn user-update! [user-map]
-  (or (adapters/user-update! repository user-map)
-      {:status :error
-       :code :data-error}))
+  ;; TODO: filter keys
+  (adapters/user-update! repository user-map))
+
+;;
+;; Files
+;;
 
 (defn files-get [user-id filter]
-  (or (adapters/files-get repository user-id {})
-        {:status :error
-         :code :data-error}))
+  (adapters/files-get repository user-id {}))
 
 (defn files-tag! [user-id files tag]
-  (or (adapters/files-tag! repository user-id files tag)
-        {:status :error
-         :code :data-error}))
+  (adapters/files-tag! repository user-id files tag))
 
 (defn files-resync! [user-id]
-  (if-let [files (adapters/files-sync file-storage user-id)]
+  (if-let [files (adapters/file-storage-sync file-storage user-id)]
     (or (adapters/files-update! repository user-id files)
-        {:status :error
-         :code :data-error})
-    {:status :error
-     :code :service-unavailable}))
+        (throw (Exception. "data storage error")))
+    (throw (Exception. "file storage service unavailable"))))
 

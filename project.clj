@@ -25,11 +25,12 @@
                  [bk/ring-gzip "0.3.0"]
                  [prone "2020-01-17"]
                  [aleph "0.4.6"]
+                 [clj-http "3.10.0"]
                  [compojure "1.6.1"]
                  [com.taoensso/sente "1.15.0"]
                  ;; Database
                  [org.clojure/java.jdbc "0.7.11"]
-                 [org.postgresql/postgresql "42.2.10"]
+                 [org.postgresql/postgresql "42.2.11"]
                  [postgre-types "0.0.4"]
                  [buddy/buddy-core "1.6.0"]
                  [buddy/buddy-auth "2.2.0"]

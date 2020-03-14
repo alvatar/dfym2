@@ -7,7 +7,8 @@
             [dfym.usecases :refer [map->UseCases]]
             [dfym.controllers.http :refer [map->HTTPController]]
             [dfym.controllers.websocket :refer [map->WebsocketController]]
-            [dfym.adapters.postgresql :refer [map->PostgreSqlAdapter]])
+            [dfym.adapters.postgresql :refer [map->PostgreSqlAdapter]]
+            [dfym.adapters.dropbox :refer [map->DropboxAdapter]])
   (:gen-class))
 
 (log/set-level! :debug)
@@ -22,8 +23,9 @@
    :websocket-controller (map->WebsocketController {})
    :use-cases (component/using
                (map->UseCases {})
-               [:repository])
-   :repository (map->PostgreSqlAdapter {})))
+               [:repository :file-storage])
+   :repository (map->PostgreSqlAdapter {})
+   :file-storage (map->DropboxAdapter {})))
 
 (defn -main [& [port ip]]
   (let [s (system {:ip ip :port port})]

@@ -35,13 +35,24 @@
      ;; Normalize
      [:link {:rel "stylesheet" :href "css/normalize.css"}]
      [:link {:rel "stylesheet" :href "css/simplegrid.css"}]
-     ;; Special
-     [:link {:rel "stylesheet" :href "css/special.css"}]]
+     [:body
+      [:h1 "Login"]
+      [:h2 flash]
+      [:form {:method "post"}
+       (anti-forgery-field)
+       [:input {:type "text" :placeholder "Username: " :name "username"}]
+       [:input {:type "password" :placeholder "Password: " :name "password"}]
+       [:input {:type "submit" :value "Submit"}]]]]]))
+
+(defn dropbox-connect []
+  (html
+   [:html
+    [:head
+     [:meta {:charset "utf-8"}]
+     [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
+     ;; Normalize
+     [:link {:rel "stylesheet" :href "css/normalize.css"}]
+     [:link {:rel "stylesheet" :href "css/simplegrid.css"}]]
     [:body
-     [:h1 "Login"]
-     [:h2 flash]
-     [:form {:method "post"}
-      (anti-forgery-field)
-      [:input {:type "text" :placeholder "Username: " :name "username"}]
-      [:input {:type "password" :placeholder "Password: " :name "password"}]
-      [:input {:type "submit" :value "Submit"}]]]]))
+     [:h1 "Connect to Dropbox"]
+     [:h2 [:a {:href "/dropbox-redirect"} "Go"]]]]))

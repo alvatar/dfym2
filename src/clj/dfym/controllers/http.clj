@@ -41,7 +41,9 @@
 (let [packer (sente-transit/get-transit-packer)
       {:keys [ch-recv send-fn connected-uids
               ajax-post-fn ajax-get-or-ws-handshake-fn]}
-      (sente/make-channel-socket! (get-sch-adapter) {:packer packer})]
+      (sente/make-channel-socket! (get-sch-adapter)
+                                  {:packer packer
+                                   :user-id-fn (fn [req] (get-in req [:session :identity]))})]
   (def ring-ajax-post ajax-post-fn)
   (def ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
   (def ch-chsk ch-recv)              ; ChannelSocket's receive channel
@@ -53,29 +55,50 @@
       response
       (header "Content-Type" "text/html; charset=utf-8")))
 
+(defn internal-error [msg]
+  {:status 500
+   :headers {"Content-Type" "text/plain"}
+   :body msg})
+
 (defn index [req]
   (ok (html/index (:anti-forgery-token req))))
 
 (defn login [req]
   (ok (html/login (:flash req))))
 
+(defn dropbox-connect [req]
+  (ok (html/dropbox-connect)))
+
+(defn dropbox-connect-finish [{params :query-params session :session}]
+  (pprint session)
+  (if (usecases/user-get-token (get-in session [:identity :id])
+                               (get params "code"))
+    (redirect "/")
+    (internal-error "Internal Error reading Dropbox token. Please ontact support.")))
+
+(defn dropbox-redirect [req]
+  (redirect "https://www.dropbox.com/oauth2/authorize?client_id=c34rhcknih9xxbu&response_type=code&redirect_uri=http://localhost:5000/dropbox-connect-finish"))
+
 (defn login-authenticate [req]
   (let [username (get-in req [:form-params "username"])
         password (get-in req [:form-params "password"])
         session (:session req)]
-    (if (usecases/user-check-password username password)
+    (if-let [user (usecases/user-check-password username password)]
       (let [next-url (get-in req [:query-params :next] "/")
-            updated-session (assoc session :identity (keyword username))]
-        (-> (redirect (or next-url "/"))
-            (assoc :session updated-session)))
+            updated-session (assoc session
+                                   :identity
+                                   (dissoc user :dropbox-token))]
+        (->  (if (:dropbox-token user)
+               (or next-url "/")
+               "/dropbox-connect")
+             redirect
+             (assoc :session updated-session)))
       (-> (redirect "/login")
           (assoc :flash "Wrong Username or Password")))))
 
 (defn logout [req]
   (-> (redirect "/login")
       (assoc :session {})))
-
-;; (redirect "https://www.dropbox.com/oauth2/authorize?client_id=ewrsd8qgaxdvks3&response_type=code")
 
 (defn authenticate [handler]
   (fn [req]
@@ -88,6 +111,10 @@
   (GET "/login" req login)
   (POST "/login" req login-authenticate)
   (GET "/logout" [] logout)
+  (GET "/dropbox-connect" [] (authenticate dropbox-connect))
+  (GET "/dropbox-redirect" [] (authenticate dropbox-redirect))
+  (GET "/dropbox-connect-finish" [] (authenticate dropbox-connect-finish))
+  ;; Websockets
   (GET "/chsk" req (ring-ajax-get-or-ws-handshake req))
   (POST "/chsk" req (ring-ajax-post req))
   (resources "/")
@@ -114,7 +141,8 @@
      (-> app
          (wrap-authorization auth-backend)
          (wrap-authentication auth-backend)
-         (wrap-defaults (if (env :production) secure-site-defaults site-defaults))
+         (wrap-defaults (-> (if (env :production) secure-site-defaults site-defaults)
+                            (assoc-in [:session :cookie-attrs :same-site] :lax)))
          prone/wrap-exceptions
          wrap-gzip)
      {:port (Integer. port)
