@@ -70,7 +70,6 @@
   (ok (html/dropbox-connect)))
 
 (defn dropbox-connect-finish [{params :query-params session :session}]
-  (pprint session)
   (if (usecases/user-get-token (get-in session [:identity :id])
                                (get params "code"))
     (redirect "/")
