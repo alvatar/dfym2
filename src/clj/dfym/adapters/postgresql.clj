@@ -11,6 +11,8 @@
             [cheshire.core :as json]
             [buddy.hashers :as hashers]
             [digest :as digest]
+            [alphabase.base58 :as base58]
+            [clojure.string :as string]
             ;;-----
             [dfym.adapters :as adapters :refer [RepositoryAdapter]]))
 
@@ -70,14 +72,14 @@
   (java.sql.Date. (.getMillis (.toInstant clj-time))))
 
 ;; LTREE
-(defrecord Ltree [path])
+(defrecord Ltree [ltree])
 
 (extend-protocol clojure.java.jdbc/ISQLParameter
   Ltree
   (set-parameter [self ^java.sql.PreparedStatement stmt ^long i]
     (let [conn (.getConnection stmt)
           meta (.getParameterMetaData stmt)]
-      (.setObject stmt i (:path self) java.sql.Types/OTHER))))
+      (.setObject stmt i (:ltree self) java.sql.Types/OTHER))))
 
 ;;
 ;; Users
@@ -121,76 +123,64 @@ RETURNING id
 ;; Files
 ;;
 
-(defn- create-unique-id [tr file-name]
-  (let [hash-id (digest/sha-512 file-name)
-        id-exists? (fn [id]
-                     (-> (sql/query tr ["SELECT COUNT(*) FROM files WHERE id = ?" id])
-                         first :count pos-int?))]
-    (loop [try-hash-id hash-id
-           n 1]
-      (println (id-exists? try-hash-id))
-      (if (id-exists? try-hash-id)
-        (recur (str hash-id "_" n)
-               (inc n))
-        try-hash-id))))
 
-(defn- find-id [tr file-name]
-  (let [hash-id (digest/sha-512 file-name)
-        get-by-id (fn [id]
-                     (-> (sql/query tr ["SELECT name FROM files WHERE id = ?" id])
-                         first :name))]
-    (loop [try-hash-id hash-id
-           n 1]
-      (cond (= n 1000) (throw (Exception. "Too many iterations finding Id. This means that the file-id could not be determined."))
-            (= (get-by-id try-hash-id) file-name)
-            (recur (str hash-id "_" n)
-                   (inc n))
-            :else  try-hash-id))))
+;;
+;;
+;;
+;; REAL SOLUTION: keys are the dropbox IDs (a copy)
+;; TREE paths are made with dropbox unique IDs
+;; An argument is passed where we provide the knowledge (via a cache) of the parent chain, we provide it
+;; Otherwise, it is searched and added in the cache, and then we continue (as they are unique, atomicity is not necessary)
+;;; IMPORTANTE: el árbol se contruye en la cache para la construcción en la DB y en un formato listo para la
+;; lectura por parte del cliente (cache común de lectura y de escritura)
 
-(defn -files-create! [user-id {:keys [path name folder? id size rev] :as file-map}]
-  (try
-    (sql/with-db-transaction
-      [tr db]
-      (let [unique-id (create-unique-id tr name)]
-        (println "name: " name " - Hash: " unique-id " - id: " id)
-        ;;(pprint file-map)
-        (println (clojure.string/join "." (cons (str "USER_" user-id)
-                                                (->> (clojure.string/split path #"/")
-                                                     (filter not-empty)
-                                                     ;;drop-last
-                                                     (map (partial find-id tr))))))
-        (sql/insert! tr :files
-                     {:id unique-id
-                      :user_id user-id
-                      :path (Ltree.
-                             (clojure.string/join "." (cons (str "USER_" user-id)
-                                                            (->> (clojure.string/split path #"/")
-                                                                 (filter not-empty)
-                                                                 ;;drop-last
-                                                                 (map (partial find-id tr))))))
-                      :name name
-                      :path_display path
-                      :is_folder folder?
-                      :dropbox_id id
-                      :size size
-                      :rev rev}))
-      #_(sql/query tr ["
-INSERT INTO files (id, user_id, path, name, path_display, is_folder, dropbox_id, size, rev)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                       (create-unique-id tr name)
-                       user-id
-                       (Ltree.
-                        (clojure.string/join "." (->> (clojure.string/split path #"/")
-                                                      (filter not-empty)
-                                                      drop-last
-                                                      (map (partial find-id tr)))))
-                       name
-                       path
-                       folder?
-                       id
-                       size
-                       rev]))
-    (catch Exception e (pprint e) (pprint (.getNextException e)) (throw e))))
+(def storage-types {:dropbox 1})
+
+(def files-cache (atom {}))
+
+(defn cache-new-file [folder-chain file-map]
+  (if-let [parent (get-in @files-cache (drop-last folder-chain))]
+    (let [entry (assoc file-map
+                       :path
+                       (Ltree. (str (-> parent :fileinfo :path :ltree)
+                                    "."
+                                    (:id file-map))))]
+      (swap! files-cache
+             assoc-in folder-chain
+             {:fileinfo (->kebab-case entry)})
+      entry)
+    ;; Set root if unset
+    (if (= 2 (count folder-chain))
+      (let [root (first folder-chain)]
+        (swap! files-cache assoc root {:fileinfo {:id root :path (->Ltree root)}})
+        (cache-new-file folder-chain file-map))
+      (throw (Exception. "The requested file doens't exist and has no possible parent")))))
+
+(defn cache-try-file [folder-chain file-map]
+  (if-let [hit (get-in @files-cache folder-chain)]
+    hit
+    (cache-new-file folder-chain file-map)))
+
+(defn dropbox-id->db-name [id]
+  (base58/encode (.getBytes (subs id 3))))
+
+(defn db-name->dropbox-id [id]
+  (str "id:" (String. (base58/decode id))))
+
+(defn -files-create! [user-id {:keys [path name folder? storage id size rev] :as file-map}]
+  (sql/insert! db :files (cache-new-file
+                          (cons (str "user_" user-id)
+                                (->> (string/split path #"/")
+                                     (filter not-empty)))
+                          {:id (case storage
+                                 (:dropbox) (dropbox-id->db-name id)) ; We use the Dropbox ID as unique, but it might be different
+                           :user_id user-id
+                           :name name
+                           :path_display path
+                           :is_folder folder?
+                           :storage (get storage-types storage)
+                           :dropbox_id id
+                           :size size})))
 
 (defn delete-all-files!!! []
   (sql/delete! db :files []))
@@ -268,9 +258,9 @@ CREATE TABLE files (
   name            TEXT NOT NULL,
   path_display    TEXT NOT NULL,
   is_folder       BOOL NOT NULL,
+  storage         INTEGER,
   dropbox_id      VARCHAR(256) NOT NULL,
-  size            INTEGER,
-  rev             CHAR(14)
+  size            BIGINT
 )
 "
                             "

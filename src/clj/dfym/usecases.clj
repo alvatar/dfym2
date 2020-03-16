@@ -4,6 +4,7 @@
             [com.stuartsierra.component :as component]
             [buddy.hashers :as hashers]
             [ring.util.response :as resp]
+            [clojure.string :as string]
             ;; -----
             [dfym.adapters :as adapters]))
 
@@ -56,13 +57,10 @@
 ;; Files
 ;;
 
-(defn- valid-extension? [file]
-  ;; TODO: optimize
-  (or (clojure.string/ends-with? name "mp3")
-      (clojure.string/ends-with? name "flac")
-      (clojure.string/ends-with? name "ogg")
-      (clojure.string/ends-with? name "wav")
-      (clojure.string/ends-with? name "mp4")))
+(defn valid-extension? [filename]
+  (when (> (count filename) 3)
+    (let [extension (subs filename (- (.length filename) 3))]
+      (some #(= extension %) ["mp3" "flac" "ogg" "wav" "mp4" "mpc" "m4a" "m4b" "m4p" "webm" "wv" "wma" "raw" "aa" "aiff"]))))
 
 (defn files-get [user-id filter]
   (adapters/files-get repository user-id {}))
@@ -79,6 +77,7 @@
                                 {:name name
                                  :path path_display
                                  :folder? folder?
+                                 :storage :dropbox
                                  :id id
                                  :size size
                                  :rev rev})))))

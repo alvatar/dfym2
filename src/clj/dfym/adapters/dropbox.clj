@@ -30,7 +30,8 @@
                                  :form-params {"path" "/_nosync_music"
                                                "recursive" true
                                                "include_media_info" true
-                                               "include_mounted_folders" true}})
+                                               "include_mounted_folders" false
+                                               "include_non_downloadable_files" false}})
                      :body
                      (json/parse-string true))]
     (data-chunk-fn user-id (get out :entries))
