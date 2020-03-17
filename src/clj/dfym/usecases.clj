@@ -50,7 +50,6 @@
   (adapters/user-get repository user-map))
 
 (defn user-update! [user-map]
-  ;; TODO: filter keys
   (adapters/user-update! repository user-map))
 
 ;;
@@ -63,19 +62,20 @@
       (some #(= extension %) ["mp3" "flac" "ogg" "wav" "mp4" "mpc" "m4a" "m4b" "m4p" "webm" "wv" "wma" "raw" "aa" "aiff"]))))
 
 (defn files-get [user-id filter]
-  (adapters/files-get repository user-id {}))
+  (adapters/files-get repository user-id))
 
 (defn files-tag! [user-id files tag]
   (adapters/files-tag! repository user-id files tag))
 
 (defn- files-saver! [user-id entries]
-  (doseq [{:keys [name path_display id size rev client_modified server_modified] :as entry} entries]
+  (doseq [{:keys [name path_lower path_display id size rev client_modified server_modified] :as entry} entries]
     (let [folder? (= (get entry :.tag) "folder")]
       (when (or folder? (valid-extension? name))
         (adapters/files-create! repository
                                 user-id
                                 {:name name
-                                 :path path_display
+                                 :path-lower path_lower
+                                 :path-display path_display
                                  :folder? folder?
                                  :storage :dropbox
                                  :id id

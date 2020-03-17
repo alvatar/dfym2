@@ -10,7 +10,7 @@
   (user-create! [self user-map] "Create user")
   (user-update! [self user-map] "Update user data")
   (files-create! [self user-id file-map] "Create a new file record")
-  (files-get [self user-id filters] "Get user files listing")
+  (files-get [self user-id] "Get user files listing")
   (files-tag! [self user-id files tag] "Tag user files")
   (files-update! [self user-id file-map] "Update file"))
 

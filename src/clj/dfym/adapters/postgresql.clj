@@ -123,43 +123,29 @@ RETURNING id
 ;; Files
 ;;
 
-
-;;
-;;
-;;
-;; REAL SOLUTION: keys are the dropbox IDs (a copy)
-;; TREE paths are made with dropbox unique IDs
-;; An argument is passed where we provide the knowledge (via a cache) of the parent chain, we provide it
-;; Otherwise, it is searched and added in the cache, and then we continue (as they are unique, atomicity is not necessary)
-;;; IMPORTANTE: el árbol se contruye en la cache para la construcción en la DB y en un formato listo para la
-;; lectura por parte del cliente (cache común de lectura y de escritura)
-
 (def storage-types {:dropbox 1})
 
 (def files-cache (atom {}))
 
-(defn cache-new-file [folder-chain file-map]
+(defn ensure-path [folder-chain file-map]
   (if-let [parent (get-in @files-cache (drop-last folder-chain))]
-    (let [entry (assoc file-map
-                       :path
-                       (Ltree. (str (-> parent :fileinfo :path :ltree)
-                                    "."
-                                    (:id file-map))))]
-      (swap! files-cache
-             assoc-in folder-chain
-             {:fileinfo (->kebab-case entry)})
-      entry)
+    (assoc file-map
+           :path
+           ;; The LTree is built with the IDs, which are unique and base58
+           (Ltree. (str (-> parent :fileinfo :path :ltree)
+                        "."
+                        (:id file-map))))
     ;; Set root if unset
     (if (= 2 (count folder-chain))
       (let [root (first folder-chain)]
         (swap! files-cache assoc root {:fileinfo {:id root :path (->Ltree root)}})
-        (cache-new-file folder-chain file-map))
+        (ensure-path folder-chain file-map))
       (throw (Exception. "The requested file doens't exist and has no possible parent")))))
 
-(defn cache-try-file [folder-chain file-map]
-  (if-let [hit (get-in @files-cache folder-chain)]
-    hit
-    (cache-new-file folder-chain file-map)))
+(defn cache-put! [folder-chain file-map]
+  "Puts a new file in the cache. Expects data in the kebab case"
+  (swap! files-cache assoc-in folder-chain
+         {:fileinfo file-map}))
 
 (defn dropbox-id->db-name [id]
   (base58/encode (.getBytes (subs id 3))))
@@ -167,26 +153,35 @@ RETURNING id
 (defn db-name->dropbox-id [id]
   (str "id:" (String. (base58/decode id))))
 
-(defn -files-create! [user-id {:keys [path name folder? storage id size rev] :as file-map}]
-  (sql/insert! db :files (cache-new-file
-                          (cons (str "user_" user-id)
-                                (->> (string/split path #"/")
-                                     (filter not-empty)))
-                          {:id (case storage
-                                 (:dropbox) (dropbox-id->db-name id)) ; We use the Dropbox ID as unique, but it might be different
-                           :user_id user-id
-                           :name name
-                           :path_display path
-                           :is_folder folder?
-                           :storage (get storage-types storage)
-                           :dropbox_id id
-                           :size size})))
+(defn -files-create! [user-id {:keys [path-display path-lower name folder? storage id size rev] :as file-map}]
+  ;; We must use path-lower for building the tree, because path display is inconsistent
+  (let [folder-chain (cons (str "user_" user-id)
+                           (->> (string/split path-lower #"/")
+                                (filter not-empty)))
+        entry (ensure-path folder-chain
+                           {:id (case storage
+                                  ;; We use the Dropbox ID as unique, but it might be different
+                                  (:dropbox) (dropbox-id->db-name id))
+                            :user_id user-id
+                            :name name
+                            :path_display path-display
+                            :is_folder folder?
+                            :storage (get storage-types storage)
+                            :dropbox_id id
+                            :size size})]
+    ;; (pprint entry)
+    (cache-put! (->kebab-case entry))
+    (sql/insert! db :files entry)))
 
 (defn delete-all-files!!! []
   (sql/delete! db :files []))
 
-(defn -files-get [user-id filters]
-  'TODO)
+(defn -files-get [user-id]
+  (let [user-key (str "user_" user-id)]
+   (if false ;; TODO
+     (get @files-cache user-key)
+     (swap! files-cache assoc user-key
+            'TODO))))
 
 (defn -files-tag! [user-id files tag]
   'TODO)
@@ -222,8 +217,8 @@ RETURNING id
     (-user-update! user-map))
   (files-create! [self user-id file]
     (-files-create! user-id file))
-  (files-get [self user-id filters]
-    (-files-get user-id filters))
+  (files-get [self user-id]
+    (-files-get user-id))
   (files-tag! [self user-id files tag]
     (-files-tag! user-id files tag))
   (files-update! [self user-id file-map]
