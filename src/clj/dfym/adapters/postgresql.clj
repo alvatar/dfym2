@@ -196,12 +196,13 @@ The folder chain has the following structure:
 
 (defn -files-get [user-id storage]
   (when-not (number? user-id) (throw (Exception. "-files-get: user Id should be a number")))
-  (let [files-key (str "user_" user-id "." storage)]
-    (or (get @files-cache files-key)
+  (let [root-path [(str "user_" user-id) storage]]
+    (or (get-in @files-cache root-path)
         (do (let [[root-user file-storage] (prepend-cache-root user-id storage [])]
               (swap! files-cache assoc root-user
                      (build-cache-root root-user file-storage)))
-            (sql/query db [(format "SELECT * FROM files WHERE '%s' @> path" files-key)]
+            (sql/query db [(format "SELECT * FROM files WHERE '%s' @> path"
+                                   (str "user_" user-id "." storage))]
                        {:row-fn #(let [entry (->kebab-case %)
                                        path (prepend-cache-root
                                              user-id
@@ -211,7 +212,7 @@ The folder chain has the following structure:
                                                                    (string/split #"/"))))]
                                    (cache-put! path entry)
                                    entry)})
-            (get @files-cache files-key)))))
+            (get-in @files-cache root-path)))))
 
 (defn -files-tag! [user-id files tag]
   'TODO)
