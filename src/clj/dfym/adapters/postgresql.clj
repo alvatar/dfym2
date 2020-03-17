@@ -120,14 +120,29 @@ RETURNING id
     :else (throw (Exception. "No id or user-name in user data for user-update!"))))
 
 ;;
-;; Files
+;; File Cache
 ;;
-
-(def storage-types {:dropbox 1})
 
 (def files-cache (atom {}))
 
-(defn ensure-path [folder-chain file-map]
+(defn build-cache-root [root-user file-storage]
+  {:fileinfo {:id root-user
+              :path (->Ltree root-user)}
+   file-storage {:fileinfo
+                 {:id file-storage
+                  :path (->Ltree (str root-user "." file-storage))}}})
+
+(defn prepend-cache-root [user-id storage path]
+  (into [(str "user_" user-id) (name storage)] path))
+
+(defn ensure-path! [folder-chain file-map]
+  "Ensures that the folder-chain is reachable, and creates the root ones if not yet created.
+If a file-map is provided, it associates the LTREE path as well.
+The folder chain has the following structure:
+  - user
+    - storage
+      - file1
+      - ..."
   (if-let [parent (get-in @files-cache (drop-last folder-chain))]
     (assoc file-map
            :path
@@ -136,16 +151,21 @@ RETURNING id
                         "."
                         (:id file-map))))
     ;; Set root if unset
-    (if (= 2 (count folder-chain))
-      (let [root (first folder-chain)]
-        (swap! files-cache assoc root {:fileinfo {:id root :path (->Ltree root)}})
-        (ensure-path folder-chain file-map))
+    (if (= 3 (count folder-chain))
+      (let [[root-user file-storage _] folder-chain]
+        (swap! files-cache assoc root-user
+               (build-cache-root root-user file-storage))
+        (ensure-path! folder-chain file-map))
       (throw (Exception. "The requested file doens't exist and has no possible parent")))))
 
 (defn cache-put! [folder-chain file-map]
   "Puts a new file in the cache. Expects data in the kebab case"
   (swap! files-cache assoc-in folder-chain
          {:fileinfo file-map}))
+
+;;
+;; Files
+;;
 
 (defn dropbox-id->db-name [id]
   (base58/encode (.getBytes (subs id 3))))
@@ -155,33 +175,43 @@ RETURNING id
 
 (defn -files-create! [user-id {:keys [path-display path-lower name folder? storage id size rev] :as file-map}]
   ;; We must use path-lower for building the tree, because path display is inconsistent
-  (let [folder-chain (cons (str "user_" user-id)
-                           (->> (string/split path-lower #"/")
-                                (filter not-empty)))
-        entry (ensure-path folder-chain
-                           {:id (case storage
-                                  ;; We use the Dropbox ID as unique, but it might be different
-                                  (:dropbox) (dropbox-id->db-name id))
-                            :user_id user-id
-                            :name name
-                            :path_display path-display
-                            :is_folder folder?
-                            :storage (get storage-types storage)
-                            :dropbox_id id
-                            :size size})]
-    ;; (pprint entry)
-    (cache-put! (->kebab-case entry))
+  (let [folder-chain (prepend-cache-root user-id storage
+                                         (->> (string/split path-lower #"/")
+                                              (filter not-empty)))
+        entry (ensure-path! folder-chain
+                            {:id (case storage
+                                   ;; We use the Dropbox ID as unique, but it might be different
+                                   (:dropbox) (dropbox-id->db-name id))
+                             :user_id user-id
+                             :name name
+                             :path_display path-display
+                             :is_folder folder?
+                             :dropbox_id id
+                             :size size})]
+    (cache-put! folder-chain (->kebab-case entry))
     (sql/insert! db :files entry)))
 
 (defn delete-all-files!!! []
   (sql/delete! db :files []))
 
-(defn -files-get [user-id]
-  (let [user-key (str "user_" user-id)]
-   (if false ;; TODO
-     (get @files-cache user-key)
-     (swap! files-cache assoc user-key
-            'TODO))))
+(defn -files-get [user-id storage]
+  (when-not (number? user-id) (throw (Exception. "-files-get: user Id should be a number")))
+  (let [files-key (str "user_" user-id "." storage)]
+    (or (get @files-cache files-key)
+        (do (let [[root-user file-storage] (prepend-cache-root user-id storage [])]
+              (swap! files-cache assoc root-user
+                     (build-cache-root root-user file-storage)))
+            (sql/query db [(format "SELECT * FROM files WHERE '%s' @> path" files-key)]
+                       {:row-fn #(let [entry (->kebab-case %)
+                                       path (prepend-cache-root
+                                             user-id
+                                             storage
+                                             (filter not-empty (-> entry
+                                                                   :path-display
+                                                                   (string/split #"/"))))]
+                                   (cache-put! path entry)
+                                   entry)})
+            (get @files-cache files-key)))))
 
 (defn -files-tag! [user-id files tag]
   'TODO)
@@ -218,7 +248,7 @@ RETURNING id
   (files-create! [self user-id file]
     (-files-create! user-id file))
   (files-get [self user-id]
-    (-files-get user-id))
+    (-files-get user-id "dropbox"))
   (files-tag! [self user-id files tag]
     (-files-tag! user-id files tag))
   (files-update! [self user-id file-map]
@@ -253,7 +283,6 @@ CREATE TABLE files (
   name            TEXT NOT NULL,
   path_display    TEXT NOT NULL,
   is_folder       BOOL NOT NULL,
-  storage         INTEGER,
   dropbox_id      VARCHAR(256) NOT NULL,
   size            BIGINT
 )
