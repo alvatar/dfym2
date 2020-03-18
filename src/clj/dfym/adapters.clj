@@ -11,8 +11,7 @@
   (user-update! [self user-map] "Update user data")
   (files-create! [self user-id file-map] "Create a new file record")
   (files-get [self user-id] "Get user files listing")
-  (files-tag! [self user-id files tag] "Tag user files")
-  (files-update! [self user-id file-map] "Update file"))
+  (files-tag! [self user-id files tag] "Tag user files"))
 
 (defprotocol FileStorageAdapter
   "An adapter for file storages"

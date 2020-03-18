@@ -14,7 +14,8 @@
             [alphabase.base58 :as base58]
             [clojure.string :as string]
             ;;-----
-            [dfym.adapters :as adapters :refer [RepositoryAdapter]]))
+            [dfym.adapters :as adapters :refer [RepositoryAdapter]])
+  (:import (com.mchange.v2.c3p0 ComboPooledDataSource)))
 
 ;; References:
 ;; SQL
@@ -87,9 +88,9 @@
 
 (defn user-get-by [by]
   (fn [id]
-    (->kebab-case
-     (first
-      (sql/query db [(format "SELECT * FROM users WHERE %s = ?" (keyword->column by)) id])))))
+    (sql/query db [(format "SELECT * FROM users WHERE %s = ?" (keyword->column by)) id]
+               {:identifiers #(.replace % \_ \-)
+                :result-set-fn first})))
 
 (defn -user-get [user-map]
   (let [{:keys [id user-name]} user-map]
@@ -203,28 +204,46 @@ The folder chain has the following structure:
                      (build-cache-root root-user file-storage)))
             (sql/query db [(format "SELECT * FROM files WHERE '%s' @> path"
                                    (str "user_" user-id "." storage))]
-                       {:row-fn #(let [entry (->kebab-case %)
-                                       path (prepend-cache-root
+                       {:identifiers #(.replace % \_ \-)
+                        :row-fn #(let [path (prepend-cache-root
                                              user-id
                                              storage
-                                             (filter not-empty (-> entry
-                                                                   :path-display
-                                                                   (string/split #"/"))))]
-                                   (cache-put! path entry)
-                                   entry)})
+                                             (filter not-empty
+                                                     (-> % :path-display (string/split #"/"))))]
+                                   (cache-put! path %)
+                                   %)})
             (get-in @files-cache root-path)))))
 
-(defn -files-tag! [user-id files tag]
-  'TODO)
-
-(defn -files-update! [user-id file-map]
-  'TODO)
+(defn -files-tag! [user-id]
+  (sql/with-db-transaction
+    [tr db]
+    [(sql/query tr ["SELECT id, name FROM tags WHERE user_id = ?" user-id])
+     (sql/query tr ["SELECT file_id, tag_id FROM files_tags WHERE files_tags.user_id = ?" user-id])]))
 
 ;;
 ;; Adapter
 ;;
 
-(defn single-result [res] (-> res first vals first))
+(def db-spec
+  {:classname "org.postgresql.Driver"
+   :subprotocol "postgresql"
+   :subname "//localhost:5432/dfym"
+   ;;:user "myaccount"
+   ;;:password "secret"
+   })
+
+(defn pool
+  [spec]
+  (let [cpds (doto (ComboPooledDataSource.)
+               (.setDriverClass (:classname spec))
+               (.setJdbcUrl (str "jdbc:" (:subprotocol spec) ":" (:subname spec)))
+               ;;(.setUser (:user spec))
+               ;;(.setPassword (:password spec))
+               ;; expire excess connections after 30 minutes of inactivity:
+               (.setMaxIdleTimeExcessConnections (* 30 60))
+               ;; expire connections after 3 hours of inactivity:
+               (.setMaxIdleTime (* 3 60 60)))]
+    {:datasource cpds}))
 
 (defrecord PostgreSqlAdapter []
   component/Lifecycle
@@ -251,9 +270,7 @@ The folder chain has the following structure:
   (files-get [self user-id]
     (-files-get user-id "dropbox"))
   (files-tag! [self user-id files tag]
-    (-files-tag! user-id files tag))
-  (files-update! [self user-id file-map]
-    (-files-update! user-id file-map)))
+    (-files-tag! user-id files tag)))
 
 ;;
 ;; Development utilities
@@ -263,6 +280,8 @@ The folder chain has the following structure:
   (try
     (sql/db-do-commands db ["DROP TABLE IF EXISTS files CASCADE;"
                             "DROP TABLE IF EXISTS users CASCADE;"
+                            "DROP TABLE IF EXISTS files_tags CASCADE;"
+                            "DROP TABLE IF EXISTS tags CASCADE;"
                             "DROP INDEX IF EXISTS files_path_idx;"
                             "
 CREATE TABLE users (
@@ -290,6 +309,22 @@ CREATE TABLE files (
 "
                             "
 CREATE INDEX files_path_idx ON files USING GIST (path);
+"
+                            "
+CREATE TABLE tags (
+  id              SERIAL PRIMARY KEY,
+  name            VARCHAR(1024),
+  user_id         INTEGER REFERENCES users(id) NOT NULL,
+  UNIQUE (name, user_id)
+)
+"
+                            "
+CREATE TABLE files_tags (
+  file_id         VARCHAR(256) REFERENCES files(id) NOT NULL,
+  tag_id          INTEGER REFERENCES tags(id) NOT NULL,
+  user_id         INTEGER REFERENCES users(id) NOT NULL,
+  UNIQUE (file_id, tag_id)
+)
 "
                             ])
     (catch Exception e (or e (.getNextException e))

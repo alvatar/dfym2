@@ -37,6 +37,7 @@
                  [buddy/buddy-hashers "1.4.0"]
                  [digest "1.4.9"]
                  [mvxcvi/alphabase "2.1.0"]
+                 [com.mchange/c3p0 "0.9.5.5"]
                  ;; HTML
                  [hiccup "1.0.5"]
                  [garden "1.3.9"]
