@@ -16,22 +16,26 @@
              ;;             :db/index true}
              })
 
-(defonce conn (d/create-conn schema))
+(defonce db (d/create-conn schema))
 
 (defn persist [db] (js/localStorage.setItem "dfym/db" (db->string db)))
 
 #_(js/localStorage.clear)
 
-(defn reset-db! [db]
-  (reset! conn db)
-  ;; (render db)
-  (persist db))
+;; Hack to inject render-fn
+;; (def render-fn nil)
 
-(d/listen! conn :log
+;; (defn reset-db! [db]
+;;   (reset! db db)
+;;   ;;(when render-fn (render-fn db))
+;;   ;; (ui/render db)
+;;   (persist db))
+
+(d/listen! db :log
            (fn [tx-report]
              (let [tx-id  (get-in tx-report [:tempids :db/current-tx])
                    datoms (:tx-data tx-report)]
-               (log* datoms))))
+               (log* "TRANSACTIONS: " datoms))))
 
 ;; (or (when-let [stored (js/localStorage.getItem "dfym/db")]
 ;;       (let [stored-db (string->db stored)]
@@ -41,7 +45,7 @@
 ;;           ;;(swap! history conj @conn)
 ;;           true)))
 ;;     (d/transact! conn fixtures))
-(d/transact! conn fixtures/tags)
+
 
 ;; (d/listen! conn :persistence
 ;;              (fn [tx-report] ;; FIXME do not notify with nil as db-report
@@ -49,23 +53,46 @@
 ;;                (when-let [db (:db-after tx-report)]
 ;;                  (js/setTimeout #(persist db) 0))))
 
+;; System attributes
+
+(defn set-system-attrs! [& args]
+  (d/transact! db
+               (for [[attr value] (partition 2 args)]
+                 (if value
+                   ;; ID 1 is a convention here.
+                   [:db/add 1 attr value]
+                   [:db.fn/retractAttribute 0 attr]))))
+
+(defn get-system-attr
+  ([attr]
+   (get (d/entity @db 1) attr))
+  ([db attr]
+   (get (d/entity db 1) attr))
+  ([db attr & attrs]
+   (mapv #(get-system-attr db %) (concat [attr] attrs))))
+
 ;; Tags
 
-(defn get-tags []
+(defn create-tag! [[id tag]]
+  'TODO)
+
+(defn get-tags [db]
   (let [res (d/q '[:find ?e ?tag
                    :where
                    [?e :tag/name ?tag]]
-                 @conn)]
-    (log* res)
+                 db)]
     res))
 
 (defn update-tag! [[id tag]]
   'TODO)
 
+(defn delete-tag! [[id tag]]
+  'TODO)
+
 ;; Filters
 
 (defn get-filters []
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; HERE
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;; HERE
   'TODO)
 
 (defn add-filter! [tag]
@@ -87,3 +114,8 @@
 (defn get-files [root]
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; HERE
   'TODO)
+
+;; Init
+
+(set-system-attrs! :user {})
+(d/transact! db fixtures/tags)
