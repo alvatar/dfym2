@@ -14,7 +14,8 @@
    ;; -----
    [dfym.globals :as globals :refer [display-type]]
    [dfym.utils :as utils :refer [log*]]
-   [dfym.client :as client]))
+   [dfym.client :as client]
+   [dfym.db :as db]))
 
 ;; Convert JSX to Cljs
 ;; https://github.com/madvas/jsx-to-clojurescript
@@ -58,12 +59,13 @@
 
 (defmethod client/-event-msg-handler :chsk/handshake
   [{:as ev-msg :keys [?data uid]}]
-  (js/console.log ev-msg)
   (let [[?user & _] ?data]
     (when-not ?user
       (js/alert "Internal Error: loading user")
       (logout))
-    (reset! globals/user ?user)))
+    ;; TODO
+    ;;(reset! globals/user ?user)
+    ))
 
 ;;
 ;; UI Components
@@ -129,81 +131,66 @@
   (reset! style-node (goog.style/installStyles styles)))
 
 (rum/defc app < rum/reactive []
-  [:div.no-scroll {:style {:width "100%" :height "100%"}}
-   [:div {:style {:padding "20px"}}
-    [:div.col-1-4 {:style {:padding "0 8px 0 20px"}}
-     [:div.panel
-      [:h2 "TAGS"]
-      [:div
-       [:.tag "[Untagged]"]
-       [:.tag "Classical"]
-       [:.tag "Ambient/Experimental"]
-       [:.tag "Work"]
-       [:.tag "Energetic"]
-       [:.tag "Happy"]
-       [:.tag "Death Metal"]
-       [:.tag "Metal"]
-       [:.tag "Black Metal"]
-       [:.tag "Weird"]
-       [:.tag "Mathematical"]
-       [:.tag "Beautiful"]
-       [:.tag "Complex"]
-       [:.tag "Disgusting"]
-       [:.tag "Should remove"]
-       [:.tag "Apocalyptical"]
-       [:.tag "Noise"]
-       [:.tag "Sophisticated"]]
-      [:div.panel-bottom]]]
-    [:div.col-1-4 {:style {:padding "0 8px 0 0px"}}
-     [:div.panel
-      [:h2 "SELECTED TAGS"]
-      [:div [:.tag "Mathematical"]]
-      [:div.panel-bottom]]
-     [:.div.panel-bottom]]
-    [:div.col-2-4 {:style {:width "50%"}}
-     [:div.panel
-      [:h2 "FILTERED FILES"
-       [:div.top-operations {:style {:font-weight "normal"}} "[Logged in as: " (:user-name (rum/react globals/user)) "]"]
-       [:div.top-operations "Deselect_All"]
-       [:div.top-operations "Select_All"]]
-      [:div
-       [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
-       [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
-       [:.file.dir.selected "■ MIDI shits I produced when I was on LSD"]
-       [:.file.dir "▨ Weird sounds and forbidden music"]
-       [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
-       [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
-       [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
-       [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
-       [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
-       [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
-       [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
-       [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
-       [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
-       [:.file.dir "▨ MIDI shits I produced when I was on LSD"]
-       [:.file.dir "▨ Weird sounds and forbidden music"]
-       [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
-       [:.file.dir "▨ MIDI shits I produced when I was on LSD"]
-       [:.file "□ Weird sounds and forbidden music"]
-       [:.file "□ Weird sounds and forbidden music"]
-       [:.file.selected "■ Weird sounds and forbidden music"]
-       [:.file.selected "■ [Yury Stravisnky] Songs of Komogorov"]
-       [:.file.selected "■ Weird sounds and forbidden music"]
-       [:.file "□ Weird sounds and forbidden music"]
-       [:.file "□ Weird sounds and forbidden music"]
-       [:.file "□ [Yury Stravisnky] Songs of Komogorov"]
-       [:.file "□ Weird sounds and forbidden music"]
-       [:.file "□ Weird sounds and forbidden music"]
-       [:.file "□ [Yury Stravisnky] Songs of Komogorov"]
-       [:.file "□ The biggest pain in the Ass [The Beatles]"]
-       [:.file "□ MIDI shits I produced when I was on LSD"]
-       [:.file "□ Weird sounds and forbidden music"]]
-      [:.div.panel-bottom]]]]
-   [:div#controls
-    [:div#player
-     [:audio {:controls "controls"}
-      [:source {:src "https://www.dropbox.com/s/12fpcuwwmg8s7aj/02%20-%20Theme%20From%20Jack%20Johnson.mp3?raw=1"}]]]
-    [:div#menu-button {:on-click logout} "⚙"]]])
+  (let [user-name "Alvatar" #_(:user-name (rum/react globals/user))]
+   [:div.no-scroll {:style {:width "100%" :height "100%"}}
+    [:div {:style {:padding "20px"}}
+     [:div.col-1-4 {:style {:padding "0 8px 0 20px"}}
+      [:div.panel
+       [:h2 "TAGS"]
+       [:div
+        (for [[id tag] (db/get-tags)]
+          [:.tag {:id id} tag])]
+       [:div.panel-bottom]]]
+     [:div.col-1-4 {:style {:padding "0 8px 0 0px"}}
+      [:div.panel
+       [:h2 "SELECTED TAGS"]
+       [:div [:.tag "Mathematical"]]
+       [:div.panel-bottom]]
+      [:.div.panel-bottom]]
+     [:div.col-2-4 {:style {:width "50%"}}
+      [:div.panel
+       [:h2 "FILTERED FILES"
+        [:div.top-operations {:style {:font-weight "normal"}} "[Logged in as: " user-name "]"]
+        [:div.top-operations "Deselect_All"]
+        [:div.top-operations "Select_All"]]
+       [:div
+        [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
+        [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
+        [:.file.dir.selected "■ MIDI shits I produced when I was on LSD"]
+        [:.file.dir "▨ Weird sounds and forbidden music"]
+        [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
+        [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
+        [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
+        [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
+        [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
+        [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
+        [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
+        [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
+        [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
+        [:.file.dir "▨ MIDI shits I produced when I was on LSD"]
+        [:.file.dir "▨ Weird sounds and forbidden music"]
+        [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
+        [:.file.dir "▨ MIDI shits I produced when I was on LSD"]
+        [:.file "□ Weird sounds and forbidden music"]
+        [:.file "□ Weird sounds and forbidden music"]
+        [:.file.selected "■ Weird sounds and forbidden music"]
+        [:.file.selected "■ [Yury Stravisnky] Songs of Komogorov"]
+        [:.file.selected "■ Weird sounds and forbidden music"]
+        [:.file "□ Weird sounds and forbidden music"]
+        [:.file "□ Weird sounds and forbidden music"]
+        [:.file "□ [Yury Stravisnky] Songs of Komogorov"]
+        [:.file "□ Weird sounds and forbidden music"]
+        [:.file "□ Weird sounds and forbidden music"]
+        [:.file "□ [Yury Stravisnky] Songs of Komogorov"]
+        [:.file "□ The biggest pain in the Ass [The Beatles]"]
+        [:.file "□ MIDI shits I produced when I was on LSD"]
+        [:.file "□ Weird sounds and forbidden music"]]
+       [:.div.panel-bottom]]]]
+    [:div#controls
+     [:div#player
+      [:audio {:controls "controls"}
+       [:source {:src "https://www.dropbox.com/s/12fpcuwwmg8s7aj/02%20-%20Theme%20From%20Jack%20Johnson.mp3?raw=1"}]]]
+     [:div#menu-button {:on-click logout} "⚙"]]]))
 
 (defn make-player [player-html-element]
   (let [player (js/MediaElementPlayer.

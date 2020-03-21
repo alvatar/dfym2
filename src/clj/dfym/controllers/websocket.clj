@@ -10,6 +10,19 @@
             [dfym.controllers.http :refer [ch-chsk chsk-send! connected-uids]]
             [dfym.usecases :as usecases]))
 
+
+(defn authorized-user? [{:keys [?data ring-req]}]
+  (let [session (:session ring-req)
+        uid (:uid session)
+        user (:user ?data)
+        id (:id user)]
+    (println "********* UID: " uid " ID: " id)
+    (= id uid)))
+
+(def error-unauthorized
+  {:status "error"
+   :message "unauthorized"})
+
 ;;
 ;; Sente event handlers
 ;;
@@ -23,6 +36,7 @@
   "Wraps `-event-msg-handler` with logging, error catching, etc."
   [{:as ev-msg :keys [id ?data event]}]
   ;; (-event-msg-handler ev-msg) ; Handle event-msgs on a single thread
+  ;; TODO: proper thread pool
   (future (-event-msg-handler ev-msg)) ; Handle event-msgs on a thread pool
   )
 
@@ -30,37 +44,69 @@
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
   (let [session (:session ring-req)
         uid (:uid session)]
-    (when ?reply-fn
-      (?reply-fn {:umatched-event-as-echoed-from-from-server event}))))
+    (when ?reply-fn (?reply-fn {:umatched-event-as-echoed-from-from-server event}))))
+
+;; User
 
 (defmethod -event-msg-handler :user/get
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (?reply-fn (usecases/user-get
-              (:user-id ?data))))
+  (let [{:keys [user-id]} ?data]
+    (?reply-fn (if (authorized-user? ev-msg)
+                 (usecases/get-user (get ?data :user))
+                 error-unauthorized))))
 
-;; (defmethod -event-msg-handler :user/update!
-;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-;;   (?reply-fn (usecases/user-update!
-;;               (:user-id ?data)
-;;               (:user-data ?data))))
+(defmethod -event-msg-handler :user/update!
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+  (let [{:keys [user-id]} ?data]
+    (?reply-fn (if (authorized-user? ev-msg)
+                 (usecases/update-user! (get ?data :user))
+                 error-unauthorized))))
 
-;; (defmethod -event-msg-handler :files/get
-;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-;;   (?reply-fn (usecases/files-get
-;;               (:user-id ?data)
-;;               (:filters ?data))))
+;; Files
 
-;; (defmethod -event-msg-handler :files/tag!
-;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-;;   (?reply-fn (usecases/files-tag!
-;;               (:user-id ?data)
-;;               (:files ?data)
-;;               (:tag ?data))))
+(defmethod -event-msg-handler :files/get
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+  (?reply-fn (if (authorized-user? ev-msg)
+               (usecases/get-files (get-in ?data [:user :id]))
+               error-unauthorized)))
 
-;; (defmethod -event-msg-handler :files/resync!
-;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-;;   (?reply-fn (usecases/files-resync!
-;;               (:user-id ?data))})
+(defmethod -event-msg-handler :files/resync!
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+  (?reply-fn (if (authorized-user? ev-msg)
+               (usecases/resync-files! (get-in ?data [:user :id]))
+               error-unauthorized)))
+
+;; Tags & tag links
+
+(defmethod -event-msg-handler :tags/get
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+  (?reply-fn (if (authorized-user? ev-msg)
+               (usecases/get-tags (get-in ?data [:user :id]))
+               error-unauthorized)))
+
+(defmethod -event-msg-handler :tag/update!
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+  "Expects the data to be a regular tag, where the id is references the tag to be updated"
+  (?reply-fn (if (authorized-user? ev-msg)
+               (usecases/update-tag! (get-in ?data [:user :id])
+                                     (get ?data :tag))
+               error-unauthorized)))
+
+(defmethod -event-msg-handler :tag/link!
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+  (?reply-fn (if (authorized-user? ev-msg)
+               (usecases/link-tag! (get-in ?data [:user :id])
+                                   (get-in ?data [:file :id])
+                                   (get ?data :tag))
+               error-unauthorized)))
+
+(defmethod -event-msg-handler :tag/unlink!
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+  (?reply-fn (if (authorized-user? ev-msg)
+               (usecases/unlink-tag! (get-in ?data [:user :id])
+                                     (get-in ?data [:file :id])
+                                     (get ?data :tag))
+               error-unauthorized)))
 
 ;;
 ;; Controller
@@ -68,10 +114,10 @@
 
 (defrecord WebsocketController
     [sente]
-  component/Lifecycle
-  (start [component]
-    (assoc component
-           :sente
-           (sente/start-server-chsk-router! ch-chsk event-msg-handler)))
-  (stop [component]
-    component))
+    component/Lifecycle
+    (start [component]
+      (assoc component
+             :sente
+             (sente/start-server-chsk-router! ch-chsk event-msg-handler)))
+    (stop [component]
+      component))

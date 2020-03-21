@@ -29,10 +29,3 @@
          (swap! window assoc :width width)
          (swap! window assoc :height height)
          (reset! display-type (width->display-type width))))))
-
-;;
-;; Client DB
-;;
-
-(defonce user (atom nil))
-

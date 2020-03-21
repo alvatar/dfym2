@@ -13,7 +13,6 @@
                  [com.taoensso/encore "2.119.0"]
                  [com.taoensso/timbre "4.10.0"]
                  ;; [com.rpl/specter "1.1.2"] ; Immutable data structure manipulation
-                 ;; [diehard "0.8.4"] ; Flexible retry, circuit breaker and rate limiter
                  ;; [traversy "0.5.0"] ; Simply put, multilenses are generalisations of sequence and update-in
                  ;; Data format
                  [com.cognitect/transit-clj "1.0.324"]
@@ -46,7 +45,11 @@
                  ;; Cljs
                  [binaryage/oops "0.7.0"]
                  [binaryage/devtools "1.0.0"]
-                 [rum "0.11.4"]]
+                 [rum "0.11.4"]
+                 [datascript "0.18.10"]
+                 [datascript-transit "0.3.0"
+                  :exclusions [com.cognitect/transit-clj
+                               com.cognitect/transit-cljs]]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-environ "1.1.0" :hooks false]]

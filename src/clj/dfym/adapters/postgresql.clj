@@ -4,7 +4,7 @@
             [environ.core :refer [env]]
             [taoensso.timbre :as log]
             ;; Db
-            [clojure.java.jdbc :as sql]
+            [clojure.java.jdbc :as jdbc]
             [postgre-types.json :refer [add-json-type add-jsonb-type]]
             [camel-snake-kebab.core :as case-shift]
             [clj-time.core :as time]
@@ -29,7 +29,7 @@
 
 (defn connect-to-local []
   (def db "postgresql://localhost:5432/dfym")
-  (def dbc (sql/get-connection db))
+  (def dbc (jdbc/get-connection db))
   (println "Connecting to PostgreSQL:" db))
 
 ;;
@@ -86,22 +86,10 @@
 ;; Users
 ;;
 
-(defn user-get-by [by]
-  (fn [id]
-    (sql/query db [(format "SELECT * FROM users WHERE %s = ?" (keyword->column by)) id]
-               {:identifiers #(.replace % \_ \-)
-                :result-set-fn first})))
 
-(defn -user-get [user-map]
-  (let [{:keys [id user-name]} user-map]
-    (cond
-      id ((user-get-by :id) id)
-      user-name ((user-get-by :user-name) user-name)
-      :else (throw (Exception. "No id or user-name in user data for user-get")))))
-
-(defn -user-create! [{:keys [name password first-name family-name]}]
+(defn -create-user! [{:keys [name password first-name family-name]}]
   (first
-   (sql/query db ["
+   (jdbc/query db ["
 INSERT INTO users (user_name, password, first_name, family_name)
 VALUES (?, ?, ?, ?)
 ON CONFLICT (user_name) DO NOTHING
@@ -109,15 +97,28 @@ RETURNING id
 "
                   name (hashers/derive password) first-name family-name])))
 
-(defn user-update-by! [by]
-  (fn [user-map]
-    (sql/update! db :users (-> user-map (dissoc :id) ->snake_case)
-                 [(format "%s  = ?" (keyword->column by)) (:id user-map)])))
+(defn get-user-by [by]
+  (fn [id]
+    (jdbc/query db [(format "SELECT * FROM users WHERE %s = ?" (keyword->column by)) id]
+                {:identifiers #(.replace % \_ \-)
+                 :result-set-fn first})))
 
-(defn -user-update! [{:keys [id user-name] :as user-map}]
+(defn -get-user [user-map]
+  (let [{:keys [id user-name]} user-map]
+    (cond
+      id ((get-user-by :id) id)
+      user-name ((get-user-by :user-name) user-name)
+      :else (throw (Exception. "No id or user-name in user data for user-get")))))
+
+(defn update-user-by! [by]
+  (fn [user-map]
+    (jdbc/update! db :users (-> user-map (dissoc :id) ->snake_case)
+                  [(format "%s  = ?" (keyword->column by)) (:id user-map)])))
+
+(defn -update-user! [{:keys [id user-name] :as user-map}]
   (cond
-    id ((user-update-by! :id) user-map)
-    user-name ((user-update-by! :user-data) user-map)
+    id ((update-user-by! :id) user-map)
+    user-name ((update-user-by! :user-data) user-map)
     :else (throw (Exception. "No id or user-name in user data for user-update!"))))
 
 ;;
@@ -174,7 +175,7 @@ The folder chain has the following structure:
 (defn db-name->dropbox-id [id]
   (str "id:" (String. (base58/decode id))))
 
-(defn -files-create! [user-id {:keys [path-display path-lower name folder? storage id size rev] :as file-map}]
+(defn -create-file! [user-id {:keys [path-display path-lower name folder? storage id size rev] :as file-map}]
   ;; We must use path-lower for building the tree, because path display is inconsistent
   (let [folder-chain (prepend-cache-root user-id storage
                                          (->> (string/split path-lower #"/")
@@ -190,35 +191,76 @@ The folder chain has the following structure:
                              :dropbox_id id
                              :size size})]
     (cache-put! folder-chain (->kebab-case entry))
-    (sql/insert! db :files entry)))
+    (jdbc/insert! db :files entry)))
 
 (defn delete-all-files!!! []
-  (sql/delete! db :files []))
+  (jdbc/delete! db :files []))
 
-(defn -files-get [user-id storage]
+(defn -get-files [user-id storage]
   (when-not (number? user-id) (throw (Exception. "-files-get: user Id should be a number")))
   (let [root-path [(str "user_" user-id) storage]]
     (or (get-in @files-cache root-path)
         (do (let [[root-user file-storage] (prepend-cache-root user-id storage [])]
               (swap! files-cache assoc root-user
                      (build-cache-root root-user file-storage)))
-            (sql/query db [(format "SELECT * FROM files WHERE '%s' @> path"
-                                   (str "user_" user-id "." storage))]
-                       {:identifiers #(.replace % \_ \-)
-                        :row-fn #(let [path (prepend-cache-root
-                                             user-id
-                                             storage
-                                             (filter not-empty
-                                                     (-> % :path-display (string/split #"/"))))]
-                                   (cache-put! path %)
-                                   %)})
+            (jdbc/query db [(format "SELECT * FROM files WHERE '%s' @> path"
+                                    (str "user_" user-id "." storage))]
+                        {:identifiers #(.replace % \_ \-)
+                         :row-fn #(let [path (prepend-cache-root
+                                              user-id
+                                              storage
+                                              (filter not-empty
+                                                      (-> % :path-display (string/split #"/"))))]
+                                    (cache-put! path %)
+                                    %)})
             (get-in @files-cache root-path)))))
 
-(defn -files-tag! [user-id]
-  (sql/with-db-transaction
+(defn -get-tags [user-id]
+  (jdbc/with-db-transaction
     [tr db]
-    [(sql/query tr ["SELECT id, name FROM tags WHERE user_id = ?" user-id])
-     (sql/query tr ["SELECT file_id, tag_id FROM files_tags WHERE files_tags.user_id = ?" user-id])]))
+    [(jdbc/query tr ["SELECT id, name FROM tags WHERE user_id = ?" user-id])
+     (jdbc/query tr ["SELECT file_id, tag_id FROM files_tags WHERE files_tags.user_id = ?" user-id])]))
+
+(defn -create-tag! [user-id tag]
+  (jdbc/with-db-transaction
+    [tr db]
+
+    ;; HERE!!! DELETE TAGS AND FILE TAGS
+    ;; CLIENT:
+    ;; 1. Change DB
+    ;; 2. Register pending operations to inform the DB
+    ;; 3. Send those operations
+    ;; 4. Only delete those operations to inform in the client when confirmation has been received
+    ;; 5. Those changes are saved in localDB for retrying later
+
+    ;; (doseq [tag tags]
+    ;;   (let [tag (assoc tag :user_id user-id)
+    ;;         result (jdbc/update! tr :tags tag
+    ;;                              ["name = ? AND user_id = ?" (:name tag) (:user_id tag)])]
+    ;;     (when (zero? (first result))
+    ;;       (println "inserting")
+    ;;       (jdbc/insert! tr :tags tag))))
+    ;; (doseq [file-tag files-tags]
+    ;;   (let [file-tag (-> file-tag
+    ;;                      ->kebab-case
+    ;;                      (assoc :user_id user-id))
+    ;;         result 'TODO #_(jdbc/update! tr :files_tags file-tag
+    ;;                              ["name = ? AND user_id = ?" (:name tag) (:user_id tag)])]
+    ;;     (when (zero? (first result))
+    ;;       (jdbc/insert! tr :files_tags file-tag))))
+    ))
+
+(defn -update-tag! [user-id tag]
+  'TODO)
+
+(defn -delete-tag! [user-id tag]
+  'TODO)
+
+(defn -link-tag! [user-id file-id tag]
+  'TODO)
+
+(defn -unlink-tag! [user-id file-id tag]
+  'TODO)
 
 ;;
 ;; Adapter
@@ -252,25 +294,39 @@ The folder chain has the following structure:
     (def db (or (env :database-url)
                 ;;"postgres://zapxeakmarafti:O9-vM29dzvG0g2Qo505pTMJTkg@ec2-54-75-233-92.eu-west-1.compute.amazonaws.com:5432/d1heam857nkip0?sslmode=require"
                 "postgresql://localhost:5432/dfym"))
-    (def dbc (sql/get-connection db))
+    (def dbc (jdbc/get-connection db))
     (println "Connecting to PostgreSQL:" db)
     component)
   (stop [component] component)
 
   RepositoryAdapter
 
-  (user-get [self user-map]
-    (-user-get user-map))
-  (user-create! [self user-map]
-    (-user-create! user-map))
-  (user-update! [self user-map]
-    (-user-update! user-map))
-  (files-create! [self user-id file]
-    (-files-create! user-id file))
-  (files-get [self user-id]
-    (-files-get user-id "dropbox"))
-  (files-tag! [self user-id files tag]
-    (-files-tag! user-id files tag)))
+  ;; Users
+  (create-user! [self user-map]
+    (-create-user! user-map))
+  (get-user [self user-map]
+    (-get-user user-map))
+  (update-user! [self user-map]
+    (-update-user! user-map))
+  ;; Files
+  (create-file! [self user-id file-map]
+    (-create-file! user-id file-map))
+  (get-files [self user-id]
+    (-get-files user-id "dropbox"))
+  ;; Tags
+  (get-tags [self user-id]
+    (-get-tags user-id))
+  (create-tag! [self user-id tag]
+    (-create-tag! user-id tag))
+  (update-tag! [self user-id tag]
+    (-update-tag! user-id tag))
+  (delete-tag! [self user-id tag]
+    (-delete-tag! user-id tag))
+  ;; Tag links
+  (link-tag! [self user-id file-id tag]
+    (-link-tag! user-id file-id tag))
+  (unlink-tag! [self user-id file-id tag]
+    (-unlink-tag! user-id file-id tag)))
 
 ;;
 ;; Development utilities
@@ -278,7 +334,7 @@ The folder chain has the following structure:
 
 (defn reset-database!!! []
   (try
-    (sql/db-do-commands db ["DROP TABLE IF EXISTS files CASCADE;"
+    (jdbc/db-do-commands db ["DROP TABLE IF EXISTS files CASCADE;"
                             "DROP TABLE IF EXISTS users CASCADE;"
                             "DROP TABLE IF EXISTS files_tags CASCADE;"
                             "DROP TABLE IF EXISTS tags CASCADE;"
@@ -319,6 +375,9 @@ CREATE TABLE tags (
 )
 "
                             "
+CREATE INDEX ON tags(name);
+"
+                            "
 CREATE TABLE files_tags (
   file_id         VARCHAR(256) REFERENCES files(id) NOT NULL,
   tag_id          INTEGER REFERENCES tags(id) NOT NULL,
@@ -333,6 +392,6 @@ CREATE TABLE files_tags (
   ;; Init data for development
   ;;
   (let [repo (PostgreSqlAdapter.)]
-   (adapters/user-create! repo {:name "Thor" :password "alvaro"})))
+   (adapters/create-user! repo {:name "Thor" :password "alvaro"})))
 
 ;; (require '[dfym.adapters.postgresql :as db])

@@ -70,7 +70,7 @@
   (ok (html/dropbox-connect)))
 
 (defn dropbox-connect-finish [{params :query-params session :session}]
-  (if (usecases/user-get-token (get-in session [:identity :id])
+  (if (usecases/get-user-token (get-in session [:identity :id])
                                (get params "code"))
     (redirect "/")
     (internal-error "Internal Error reading Dropbox token. Please ontact support.")))
@@ -82,7 +82,7 @@
   (let [username (get-in req [:form-params "username"])
         password (get-in req [:form-params "password"])
         session (:session req)]
-    (if-let [user (usecases/user-check-password username password)]
+    (if-let [user (usecases/check-user-password username password)]
       (let [next-url (get-in req [:query-params :next] "/")
             updated-session (assoc session
                                    :identity

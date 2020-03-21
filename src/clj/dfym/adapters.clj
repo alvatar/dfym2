@@ -6,12 +6,21 @@
 (defprotocol RepositoryAdapter
   "An adapter for data repositories"
 
-  (user-get [self user-map] "Get user data")
-  (user-create! [self user-map] "Create user")
-  (user-update! [self user-map] "Update user data")
-  (files-create! [self user-id file-map] "Create a new file record")
-  (files-get [self user-id] "Get user files listing")
-  (files-tag! [self user-id files tag] "Tag user files"))
+  ;; Users
+  (create-user! [self user-map] "Create user")
+  (get-user [self user-map] "Get user data")
+  (update-user! [self user-map] "Update user data")
+  ;; Files
+  (get-files [self user-id] "Get user files listing")
+  (create-file! [self user-id file-map] "Create a new file for a user")
+  ;; Tags
+  (create-tag! [self user-id tag] "Create new tag")
+  (get-tags [self user-id] "Get user file tags")
+  (update-tag! [self user-id tag] "Update a tag")
+  (delete-tag! [self user-id tag] "Update a tag")
+  ;; Tag links
+  (link-tag! [self user-id file-id tag] "Link a tag to a file")
+  (unlink-tag! [self user-id file-id tag] "Unlink a tag from a file"))
 
 (defprotocol FileStorageAdapter
   "An adapter for file storages"
