@@ -6,18 +6,20 @@
             [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.aleph :refer [get-sch-adapter]]
             [taoensso.sente.packers.transit :as sente-transit]
+            [cljs.repl.server :refer [gzip]]
             ;;-----
             [dfym.controllers.http :refer [ch-chsk chsk-send! connected-uids]]
             [dfym.usecases :as usecases]))
 
 
-(defn authorized-user? [{:keys [?data ring-req]}]
+(defn authorized-user? [{:keys [?data ring-req] :as msg}]
   (let [session (:session ring-req)
-        uid (:uid session)
+        uid (get-in ring-req [:session :identity :id])
         user (:user ?data)
         id (:id user)]
-    (println "********* UID: " uid " ID: " id)
-    (= id uid)))
+    (or (= id uid)
+        (do (println "Failed to authenticate uid:" uid "- id:" id)
+            false))))
 
 (def error-unauthorized
   {:status "error"

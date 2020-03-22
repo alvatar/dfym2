@@ -5,11 +5,14 @@
    [garden.stylesheet :as stylesheet]
    [goog.style]
    ;; -----
+   [dfym.utils :as utils :refer [log*]]
    [dfym.db :as db]
    [dfym.actions :as actions]))
 
 ;; Convert JSX to Cljs
 ;; https://github.com/madvas/jsx-to-clojurescript
+
+(declare render)
 
 ;;
 ;; UI Components
@@ -75,7 +78,7 @@
   (reset! style-node (goog.style/installStyles styles)))
 
 (rum/defc app [db]
-  (let [user-name (:user-name (db/get-system-attr db :user))]
+  (let [{:keys [id user-name]} (db/get-system-attr db :user)]
     [:div.no-scroll {:style {:width "100%" :height "100%"}}
      [:div {:style {:padding "20px"}}
       [:div.col-1-4 {:style {:padding "0 8px 0 20px"}}
@@ -83,52 +86,33 @@
         [:h2 "TAGS"]
         [:div
          (for [[id tag] (db/get-tags db)]
-           [:.tag {:key (str "tag-" id)} tag])]
+           [:.tag {:key id} tag])]
         [:div.panel-bottom]]]
       [:div.col-1-4 {:style {:padding "0 8px 0 0px"}}
        [:div.panel
         [:h2 "SELECTED TAGS"]
-        [:div [:.tag "Mathematical"]]
-        [:div.panel-bottom]]
-       [:.div.panel-bottom]]
+        [:div
+         (for [[id tag] (db/get-filters db)]
+           [:.tag {:key id} tag])]
+        [:.div.panel-bottom]]]
       [:div.col-2-4 {:style {:width "50%"}}
        [:div.panel
         [:h2 "FILTERED FILES"
          [:div.top-operations {:style {:font-weight "normal"}} "[Logged in as: " user-name "]"]
          [:div.top-operations "Deselect_All"]
-         [:div.top-operations "Select_All"]]
+         [:div.top-operations "Select_All"]
+         [:div.top-operations {:on-click #(actions/get-files id)}
+          "Refresh"]]
         [:div
-         [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
-         [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
-         [:.file.dir.selected "■ MIDI shits I produced when I was on LSD"]
-         [:.file.dir "▨ Weird sounds and forbidden music"]
-         [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
-         [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
-         [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
-         [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
-         [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
-         [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
-         [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
-         [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
-         [:.file.dir "▨ The biggest pain in the Ass [The Beatles]"]
-         [:.file.dir "▨ MIDI shits I produced when I was on LSD"]
-         [:.file.dir "▨ Weird sounds and forbidden music"]
-         [:.file.dir "▨ [Yury Stravisnky] Songs of Komogorov"]
-         [:.file.dir "▨ MIDI shits I produced when I was on LSD"]
-         [:.file "□ Weird sounds and forbidden music"]
-         [:.file "□ Weird sounds and forbidden music"]
-         [:.file.selected "■ Weird sounds and forbidden music"]
-         [:.file.selected "■ [Yury Stravisnky] Songs of Komogorov"]
-         [:.file.selected "■ Weird sounds and forbidden music"]
-         [:.file "□ Weird sounds and forbidden music"]
-         [:.file "□ Weird sounds and forbidden music"]
-         [:.file "□ [Yury Stravisnky] Songs of Komogorov"]
-         [:.file "□ Weird sounds and forbidden music"]
-         [:.file "□ Weird sounds and forbidden music"]
-         [:.file "□ [Yury Stravisnky] Songs of Komogorov"]
-         [:.file "□ The biggest pain in the Ass [The Beatles]"]
-         [:.file "□ MIDI shits I produced when I was on LSD"]
-         [:.file "□ Weird sounds and forbidden music"]]
+         (js/console.log (db/get-current-folder))
+         (cons [[:.file.dir {:on-click #(db/go-to-parent-folder!)
+                             :key "parent-folder"}
+                 "../"]]
+               (for [{file-id :file/id
+                      file-name :file/name} (db/get-current-folder)]
+                 [:.file.dir {:on-click #(db/go-to-folder! file-id)
+                              :key file-id}
+                  (str file-name)]))]
         [:.div.panel-bottom]]]]
      [:div#controls
       [:div#player

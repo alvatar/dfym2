@@ -61,8 +61,24 @@
     (let [extension (subs filename (- (.length filename) 3))]
       (some #(= extension %) ["mp3" "flac" "ogg" "wav" "mp4" "mpc" "m4a" "m4b" "m4p" "webm" "wv" "wma" "raw" "aa" "aiff"]))))
 
+(defn format-tree [files-tree]
+  (-> (letfn [(shrink-branch [m k v]
+                (let [{:keys [dropbox-id name]} (:fileinfo v)
+                      children (dissoc v :fileinfo)]
+                  (assoc m
+                         k (merge {:file/name k}
+                                  (if dropbox-id {:file/id dropbox-id}
+                                      (throw (Exception. (str "FATAL: File missing Id in ['" k "']"))))
+                                  (when (not-empty children)
+                                    {:file/child
+                                     (mapv second
+                                           (reduce-kv shrink-branch {} children))})))))]
+        (reduce-kv shrink-branch {} files-tree))
+      (get "dropbox")))
+
 (defn get-files [user-id]
-  (adapters/get-files repository user-id))
+  (format-tree
+   (adapters/get-files repository user-id)))
 
 (defn- files-saver! [user-id entries]
   (doseq [{:keys [name path_lower path_display id size rev client_modified server_modified] :as entry} entries]

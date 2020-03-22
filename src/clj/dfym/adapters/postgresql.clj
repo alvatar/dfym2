@@ -129,9 +129,12 @@ RETURNING id
 
 (defn build-cache-root [root-user file-storage]
   {:fileinfo {:id root-user
+              :name root-user
               :path (->Ltree root-user)}
    file-storage {:fileinfo
                  {:id file-storage
+                  :dropbox-id (str "id:" file-storage)
+                  :name file-storage
                   :path (->Ltree (str root-user "." file-storage))}}})
 
 (defn prepend-cache-root [user-id storage path]
@@ -162,8 +165,8 @@ The folder chain has the following structure:
 
 (defn cache-put! [folder-chain file-map]
   "Puts a new file in the cache. Expects data in the kebab case"
-  (swap! files-cache assoc-in folder-chain
-         {:fileinfo file-map}))
+  (swap! files-cache update-in folder-chain
+         (fn [x] (if x (assoc x :fileinfo file-map) {:fileinfo file-map}))))
 
 ;;
 ;; Files
@@ -197,23 +200,28 @@ The folder chain has the following structure:
   (jdbc/delete! db :files []))
 
 (defn -get-files [user-id storage]
-  (when-not (number? user-id) (throw (Exception. "-files-get: user Id should be a number")))
+  (when-not (number? user-id) (throw (Exception. "-get-files: user Id should be a number")))
   (let [root-path [(str "user_" user-id) storage]]
-    (or (get-in @files-cache root-path)
-        (do (let [[root-user file-storage] (prepend-cache-root user-id storage [])]
-              (swap! files-cache assoc root-user
-                     (build-cache-root root-user file-storage)))
-            (jdbc/query db [(format "SELECT * FROM files WHERE '%s' @> path"
-                                    (str "user_" user-id "." storage))]
-                        {:identifiers #(.replace % \_ \-)
-                         :row-fn #(let [path (prepend-cache-root
-                                              user-id
-                                              storage
-                                              (filter not-empty
-                                                      (-> % :path-display (string/split #"/"))))]
-                                    (cache-put! path %)
-                                    %)})
-            (get-in @files-cache root-path)))))
+    {storage ; Return it with the {storage tree} format for compatibility with tree algorithms
+     (or (get-in @files-cache root-path)
+         (do (let [[root-user file-storage] (prepend-cache-root user-id storage [])]
+               (swap! files-cache assoc root-user
+                      (build-cache-root root-user file-storage)))
+             (jdbc/query db [(format "SELECT * FROM files WHERE '%s' @> path"
+                                     (str "user_" user-id "." storage))]
+                         {:identifiers #(.replace % \_ \-)
+                          :row-fn #(let [path (prepend-cache-root
+                                               user-id
+                                               storage
+                                               (filter not-empty
+                                                       (-> % :path-display (string/split #"/"))))]
+                                     #_(when (= (:name %) "__misc")
+                                       (println path)
+                                       (pprint %))
+                                     (cache-put! path %)
+                                     %)})
+             (get-in @files-cache root-path)
+             ))}))
 
 (defn -get-tags [user-id]
   (jdbc/with-db-transaction

@@ -8,7 +8,6 @@
    ;; -----
    [dfym.utils :as utils :refer [log*]]
    [dfym.client :as client]
-   ;;[dfym.ui :as ui]
    [dfym.db :as db]))
 
 ;;
@@ -20,18 +19,24 @@
     (client/chsk-send!
      [id data] 30000
      (fn [resp]
-       (if-not (and (sente/cb-success? resp) (= :ok (:status resp)))
-         (do (log* resp)
-             (js/alert (gstring/format "Ups... Error in %s ¯\\_(ツ)_/¯ Restart the app, please..." id)))
+       (if (sente/cb-success? resp)
          (do (when handler (handler resp))
-             (when cb (cb resp))))))))
+             (when cb (cb resp)))
+         (do (log* resp)
+             (js/alert (gstring/format "Ups... Error in %s ¯\\_(ツ)_/¯ Restart the app, please..." id))))))))
 
 (defn logout []
   (oset! js/window "location.href" "/logout"))
 
 (defn get-user [user]
-  (build-request :user/get
-                 (fn [args] (log* "TODO " args))))
+  ((build-request :user/get
+                  (fn [result] (log* "TODO " result)))
+   {:user {:id user}}))
+
+(defn get-files [user]
+  ((build-request :files/get
+                  (fn [result] (db/set-files! result)))
+   {:user {:id user}}))
 
 ;;
 ;; Reactions

@@ -7,6 +7,7 @@
    [goog.string :as gstring]
    [datascript.core :as d]
    ;; -----
+   [dfym.utils :as utils :refer [log*]]
    [dfym.client :as client]
    [dfym.ui :as ui]
    [dfym.db :as db]))
@@ -23,3 +24,4 @@
 (d/listen! db/db :render
   (fn [tx-report]
     (ui/render (:db-after tx-report))))
+

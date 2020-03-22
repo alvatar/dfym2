@@ -9,9 +9,11 @@
 (defn db->string [db] (dt/write-transit-str db))
 (defn string->db [s] (dt/read-transit-str s))
 
-(def schema {:tag/name {:db/unique :db.unique/identity}
-             ;; :file/tags {:db/cardinality :db.cardinality/many
-             ;;             :db/index true}
+(def schema {:file/child {:db/valueType :db.type/ref
+                          :db/cardinality :db.cardinality/many}
+             :file/id {:db/unique :db.unique/identity}
+             :tag/name {:db/unique :db.unique/identity}
+             ;;:file/tags {:db/cardinality :db.cardinality/many}
              ;; :tag/files {:db/cardinality :db.cardinality/many
              ;;             :db/index true}
              })
@@ -46,7 +48,6 @@
 ;;           true)))
 ;;     (d/transact! conn fixtures))
 
-
 ;; (d/listen! conn :persistence
 ;;              (fn [tx-report] ;; FIXME do not notify with nil as db-report
 ;;                ;; FIXME do not notify if tx-data is empty
@@ -61,7 +62,8 @@
                  (if value
                    ;; ID 1 is a convention here.
                    [:db/add 1 attr value]
-                   [:db.fn/retractAttribute 0 attr]))))
+                   [:db.fn/retractAttribute 0 attr])))
+  'ok)
 
 (defn get-system-attr
   ([attr]
@@ -77,11 +79,10 @@
   'TODO)
 
 (defn get-tags [db]
-  (let [res (d/q '[:find ?e ?tag
-                   :where
-                   [?e :tag/name ?tag]]
-                 db)]
-    res))
+  (d/q '[:find ?e ?tag
+         :where
+         [?e :tag/name ?tag]]
+       db))
 
 (defn update-tag! [[id tag]]
   'TODO)
@@ -91,9 +92,12 @@
 
 ;; Filters
 
-(defn get-filters []
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;; HERE
-  'TODO)
+(defn get-filters [db]
+  (d/q '[:find ?e ?tag
+         :where
+         [?e :tag/name ?tag]
+         [?e :tag/active true]]
+       db))
 
 (defn add-filter! [tag]
   'TODO)
@@ -111,11 +115,62 @@
 
 ;; Files
 
-(defn get-files [root]
-    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; HERE
-  'TODO)
+(defn get-by-name [name]
+  (d/q '[:find (pull ?file [*]) .
+         :in $ ?name
+         :where [?file :file/name ?name]]
+       @db
+       name))
+
+(defn get-root []
+  (d/q '[:find (pull ?file [*]) .
+         :where [?file :file/name "dropbox"]]
+       @db))
+
+(defn get-folder-elements [file]
+  (d/q '[:find [(pull ?children [:file/id :file/name]) ...]
+         :in $ ?parent-id
+         :where
+         [?parent :file/id ?parent-id]
+         [?parent :file/child ?children]]
+       @db
+       file))
+
+(defn get-folder-parent [file]
+  (d/q '[:find ?parent-id .
+         :in $ ?child-id
+         :where
+         [?child :file/id ?child-id]
+         [?parent :file/child ?child]
+         [?parent :file/id ?parent-id]]
+       @db
+       file))
+
+(defn go-to-folder! [id]
+  (set-system-attrs! :current-folder id))
+
+(defn get-current-folder []
+  (get-folder-elements (get-system-attr :current-folder)))
+
+(defn go-to-parent-folder! []
+  (set-system-attrs! :current-folder
+                     (get-folder-parent (get-system-attr :current-folder))))
+
+;; TODO
+;; https://github.com/DVLP/localStorageDB
+;; https://pieroxy.net/blog/pages/lz-string/index.html
+(defn set-files! [files]
+  "This function expects the data as {:name [id children]}"
+  (d/transact! db [files])
+  ;; id:dropbox is the root id for this remote drive
+  (go-to-folder! "id:dropbox")
+  (log* "HELLO")
+
+  ;;(js/localStorage.setItem "dfym/files-db" files)
+  )
 
 ;; Init
 
-(set-system-attrs! :user {})
+;; TODO: only if there is no localDB
+;;(set-system-attrs! :user {})
 (d/transact! db fixtures/tags)
