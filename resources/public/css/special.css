@@ -25,3 +25,21 @@
     border-top: solid 2px;
     border-bottom: solid 2px;
 }
+
+.add-tag {
+    font-size: 18px;
+    width: calc(100% - 20px);
+    font-weight: normal;
+    color: #aaa;
+    padding: 5px;
+    margin: 5px 10px 5px 10px;
+    border-style: solid;
+    border-color: #aaa;
+    border-width: 2px;
+}
+
+.add-tag:focus {
+    color: black;
+    border-color: black;
+    outline: none;
+}

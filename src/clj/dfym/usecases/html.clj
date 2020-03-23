@@ -14,6 +14,8 @@
      [:link {:rel "stylesheet" :href "css/simplegrid.css"}]
      ;; Special
      [:link {:rel "stylesheet" :href "css/special.css"}]
+     ;; IndexDB storage
+     [:script {:src "js/localStorageDB.min.js" :type "text/javascript"}]
      ;; Media player
      [:script {:src "mediaplayer/mediaelement-and-player.min.js" :type "text/javascript"}]
      [:link {:rel "stylesheet" :href "mediaplayer/mediaelementplayer.min.css"}]

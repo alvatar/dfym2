@@ -6,32 +6,32 @@
    [dfym.fixtures :as fixtures]
    [dfym.utils :as utils :refer [log*]]))
 
+(def ^:const db-name "dfym/db")
+(def ^:const schema {:file/child {:db/valueType :db.type/ref
+                                  :db/cardinality :db.cardinality/many}
+                     :file/id {:db/unique :db.unique/identity}
+                     :tag/name {:db/unique :db.unique/identity}
+                     :file/tags {:db/cardinality :db.cardinality/many}
+                     :tag/files {:db/cardinality :db.cardinality/many
+                                 :db/index true}})
+
 (defn db->string [db] (dt/write-transit-str db))
 (defn string->db [s] (dt/read-transit-str s))
 
-(def schema {:file/child {:db/valueType :db.type/ref
-                          :db/cardinality :db.cardinality/many}
-             :file/id {:db/unique :db.unique/identity}
-             :tag/name {:db/unique :db.unique/identity}
-             ;;:file/tags {:db/cardinality :db.cardinality/many}
-             ;; :tag/files {:db/cardinality :db.cardinality/many
-             ;;             :db/index true}
-             })
-
 (defonce db (d/create-conn schema))
 
-(defn persist [db] (js/localStorage.setItem "dfym/db" (db->string db)))
+(defn persist-db! [db]
+  (log* "Persisting DB...")
+  (js/ldb.set db-name (db->string db)))
 
-#_(js/localStorage.clear)
+(defn load-db []
+  (log* "Loading DB...")
+  (js/ldb.get db-name (fn [stored] (when stored
+                                     (let [stored-db (string->db stored)]
+                                       (when-not (:schema stored-db) (log* "SCHEMA NOT FOUND!!"))
+                                       (reset! db stored-db))))))
 
-;; Hack to inject render-fn
-;; (def render-fn nil)
-
-;; (defn reset-db! [db]
-;;   (reset! db db)
-;;   ;;(when render-fn (render-fn db))
-;;   ;; (ui/render db)
-;;   (persist db))
+;; (js/ldb.set db-name nil)
 
 (d/listen! db :log
            (fn [tx-report]
@@ -39,20 +39,12 @@
                    datoms (:tx-data tx-report)]
                (log* "TRANSACTIONS: " datoms))))
 
-;; (or (when-let [stored (js/localStorage.getItem "dfym/db")]
-;;       (let [stored-db (string->db stored)]
-;;         (when (= (:schema stored-db) schema) ;; check for code update
-;;           (reset-db! stored-db)
-;;           ;;(reset-conn! stored-db)
-;;           ;;(swap! history conj @conn)
-;;           true)))
-;;     (d/transact! conn fixtures))
-
-;; (d/listen! conn :persistence
-;;              (fn [tx-report] ;; FIXME do not notify with nil as db-report
-;;                ;; FIXME do not notify if tx-data is empty
-;;                (when-let [db (:db-after tx-report)]
-;;                  (js/setTimeout #(persist db) 0))))
+(d/listen! db :persistence
+           (fn [tx-report]
+             ;; FIXME do not notify with nil as db-report
+             ;; FIXME do not notify if tx-data is empty
+             (when-let [db (:db-after tx-report)]
+               (js/setTimeout #(persist-db! db) 0))))
 
 ;; System attributes
 
@@ -75,8 +67,8 @@
 
 ;; Tags
 
-(defn create-tag! [[id tag]]
-  'TODO)
+(defn create-tag! [name]
+  (d/transact! db [{:tag/name name}]))
 
 (defn get-tags [db]
   (d/q '[:find ?e ?tag
@@ -156,21 +148,12 @@
   (set-system-attrs! :current-folder
                      (get-folder-parent (get-system-attr :current-folder))))
 
-;; TODO
-;; https://github.com/DVLP/localStorageDB
-;; https://pieroxy.net/blog/pages/lz-string/index.html
 (defn set-files! [files]
   "This function expects the data as {:name [id children]}"
   (d/transact! db [files])
   ;; id:dropbox is the root id for this remote drive
-  (go-to-folder! "id:dropbox")
-  (log* "HELLO")
-
-  ;;(js/localStorage.setItem "dfym/files-db" files)
-  )
+  (go-to-folder! "id:dropbox"))
 
 ;; Init
 
-;; TODO: only if there is no localDB
-;;(set-system-attrs! :user {})
-(d/transact! db fixtures/tags)
+(load-db)

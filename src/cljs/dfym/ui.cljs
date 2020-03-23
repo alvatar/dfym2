@@ -4,10 +4,12 @@
    [garden.core :refer [css]]
    [garden.stylesheet :as stylesheet]
    [goog.style]
+   [oops.core :refer [oget oset! oset!]]
    ;; -----
    [dfym.utils :as utils :refer [log*]]
    [dfym.db :as db]
-   [dfym.actions :as actions]))
+   [dfym.actions :as actions]
+   [dfym.dom :as dom]))
 
 ;; Convert JSX to Cljs
 ;; https://github.com/madvas/jsx-to-clojurescript
@@ -77,23 +79,50 @@
   (goog.style/setStyles @style-node styles)
   (reset! style-node (goog.style/installStyles styles)))
 
+(def draggable (atom nil))
+
+(def mouse-pos (atom {:x 0 :y 0}))
+
+(rum/defc draggable-tag < rum/reactive
+  [tag]
+  (let [pos (rum/react mouse-pos)]
+    [:h1 {:style {:position "absolute"
+                  :left (:x pos)
+                  :top (:y pos)}}
+     "HELLOOOO" (str pos)]))
+
+(rum/defcs tags < rum/reactive
+  (rum/local "" ::new-tag)
+  [state db]
+  (let [new-tag (::new-tag state)]
+    [:div.panel
+     [:h2 "TAGS"]
+     [:div {:style {:width "100%"}}
+      [:input.add-tag {:type "text"
+                       :placeholder "Add tag..."
+                       :on-change (fn [] (swap! new-tag #(dom/qval ".add-tag")))
+                       :on-key-down #(when (= (.-keyCode %) 13)
+                                       (db/create-tag! @new-tag)
+                                       (dom/set-val! (dom/q ".add-tag") ""))}]]
+     [:div {:style {:width "100%"}}
+      (for [[id tag] (db/get-tags db)]
+        [:div.tag {:key id}
+         tag " - " @draggable])]
+     [:div.panel-bottom]]))
+
 (rum/defc app [db]
   (let [{:keys [id user-name]} (db/get-system-attr db :user)]
-    [:div.no-scroll {:style {:width "100%" :height "100%"}}
+    [:div.no-scroll {:style {:width "100%" :height "100%"}
+                     :on-mouse-move #(reset! mouse-pos {:x (.-clientX %)
+                                                        :y (.-clientY %)})}
      [:div {:style {:padding "20px"}}
       [:div.col-1-4 {:style {:padding "0 8px 0 20px"}}
-       [:div.panel
-        [:h2 "TAGS"]
-        [:div
-         (for [[id tag] (db/get-tags db)]
-           [:.tag {:key id} tag])]
-        [:div.panel-bottom]]]
+       (tags db)]
       [:div.col-1-4 {:style {:padding "0 8px 0 0px"}}
        [:div.panel
         [:h2 "SELECTED TAGS"]
-        [:div
-         (for [[id tag] (db/get-filters db)]
-           [:.tag {:key id} tag])]
+        [:div (for [[id tag] (db/get-filters db)]
+                [:.tag {:key id} tag])]
         [:.div.panel-bottom]]]
       [:div.col-2-4 {:style {:width "50%"}}
        [:div.panel
@@ -104,12 +133,11 @@
          [:div.top-operations {:on-click #(actions/get-files id)}
           "Refresh"]]
         [:div
-         (js/console.log (db/get-current-folder))
          (cons [[:.file.dir {:on-click #(db/go-to-parent-folder!)
                              :key "parent-folder"}
                  "../"]]
                (for [{file-id :file/id
-                      file-name :file/name} (db/get-current-folder)]
+                      file-name :file/name} (sort-by :file/name (db/get-current-folder))]
                  [:.file.dir {:on-click #(db/go-to-folder! file-id)
                               :key file-id}
                   (str file-name)]))]
@@ -118,7 +146,8 @@
       [:div#player
        [:audio {:controls "controls"}
         [:source {:src "https://www.dropbox.com/s/12fpcuwwmg8s7aj/02%20-%20Theme%20From%20Jack%20Johnson.mp3?raw=1"}]]]
-      [:div#menu-button {:on-click actions/logout} "⚙"]]]))
+      [:div#menu-button {:on-click actions/logout} "⚙"]]
+     (draggable-tag 1)]))
 
 (defn make-player [player-html-element]
   (let [player (js/MediaElementPlayer.
