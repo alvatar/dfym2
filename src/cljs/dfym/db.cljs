@@ -11,6 +11,8 @@
                                   :db/cardinality :db.cardinality/many}
                      :file/id {:db/unique :db.unique/identity}
                      :tag/name {:db/unique :db.unique/identity}
+                     :filter/tag {:db/valueType :db.type/ref
+                                  :db/unique :db.unique/identity}
                      :file/tags {:db/cardinality :db.cardinality/many}
                      :tag/files {:db/cardinality :db.cardinality/many
                                  :db/index true}})
@@ -39,12 +41,18 @@
                    datoms (:tx-data tx-report)]
                (log* "TRANSACTIONS: " datoms))))
 
-(d/listen! db :persistence
+#_(d/listen! db :persistence
            (fn [tx-report]
-             ;; FIXME do not notify with nil as db-report
-             ;; FIXME do not notify if tx-data is empty
+             ;; FIXME do not notify with nil as db-report?
+             ;; FIXME do not notify if tx-data is empty?
              (when-let [db (:db-after tx-report)]
                (js/setTimeout #(persist-db! db) 0))))
+
+;;
+;; Data functions
+;; Note that queries are passed a DB, but transactions don't. We transact always over the last
+;; DB version. This is conceptual, even though we are not using any history support ATM.
+;;
 
 ;; System attributes
 
@@ -79,23 +87,25 @@
 (defn update-tag! [[id tag]]
   'TODO)
 
-(defn delete-tag! [[id tag]]
+(defn delete-tag! [id]
   'TODO)
 
 ;; Filters
 
-(defn get-filters [db]
-  (d/q '[:find ?e ?tag
+(defn get-filter-tags [db]
+  (d/q '[:find ?fe ?e ?tag
          :where
-         [?e :tag/name ?tag]
-         [?e :tag/active true]]
+         [?fe :filter/tag ?e]
+         [?e :tag/name ?tag]]
        db))
 
-(defn add-filter! [tag]
-  'TODO)
+(defn add-filter-tag! [tag]
+  (d/transact! db [{:filter/tag tag}])
+  true)
 
-(defn remove-filter! [tag]
-  'TODO)
+(defn remove-filter-tag! [tag-id]
+  (d/transact! db [[:db.fn/retractEntity tag-id]])
+  true)
 
 ;; Tag linking
 
