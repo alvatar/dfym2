@@ -50,7 +50,7 @@
                  [datascript-transit "0.3.0"
                   :exclusions [com.cognitect/transit-clj
                                com.cognitect/transit-cljs]]
-                 [servant "0.1.5"]]
+                 [butler "0.2.0"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-environ "1.1.0" :hooks false]]
@@ -63,7 +63,11 @@
 
   :test-paths ["test/clj" "test/cljc"]
 
-  :clean-targets ^{:protect false} [:target-path :compile-path "resources/public/js"]
+  :clean-targets ^{:protect false} [:target-path
+                                    :compile-path
+                                    "resources/public/js/dfym.js"
+                                    "resources/public/js/worker.js"
+                                    "resources/public/js/worker.js.map"]
 
   :uberjar-name "dfym.jar"
 
@@ -77,8 +81,9 @@
 
   :cljsbuild {:builds
               [{:id "dev"
-                :source-paths ["src/cljs" "src/cljc"]
+                :source-paths ["src/cljs/dfym" "src/cljc"]
                 :figwheel true
+                :jar true
                 ;; Alternatively, you can configure a function to run every time figwheel reloads.
                 ;; :figwheel {:on-jsload "dfym.core/on-figwheel-reload"}
                 :compiler {:main dfym.core
@@ -87,21 +92,34 @@
                                              {:features-to-install [:formatters :hints]
                                               :fn-symbol "F"
                                               :print-config-overrides true}}
-                           :asset-path "js/out"
+                           :asset-path "js/dfym_out"
+                           :output-dir "resources/public/js/dfym_out"
                            :output-to "resources/public/js/dfym.js"
-                           :output-dir "resources/public/js/out"
-                           :source-map-timestamp true}
-                }
+                           :optimizations :none
+                           :pretty-print true}}
+               {:id "dev-worker"
+                :source-paths ["src/cljs/worker" "src/cljc"]
+                :jar true
+                ;; Alternatively, you can configure a function to run every time figwheel reloads.
+                ;; :figwheel {:on-jsload "dfym.core/on-figwheel-reload"}
+                :compiler {:main worker.core
+                           :asset-path "js/worker_out"
+                           :output-dir "resources/public/js/worker_out"
+                           :output-to "resources/public/js/worker.js"
+                           :source-map "resources/public/js/worker.js.map"
+                           :optimizations :whitespace
+                           :pretty-print true}}
                {:id "test"
                 :source-paths ["src/cljs" "test/cljs" "src/cljc" "test/cljc"]
                 :compiler {:output-to "resources/public/js/testable.js"
                            :main dfym.test-runner
                            :optimizations :none}}
-               {:id "min"
+               {:id "production"
                 :source-paths ["src/cljs" "src/cljc"]
                 :jar true
                 :compiler {:main dfym.core
                            :output-to "resources/public/js/dfym.js"
+                           :source-map "resources/public/js/dfym.js.map"
                            :output-dir "target"
                            :source-map-timestamp false
                            :optimizations :advanced

@@ -4,4 +4,8 @@
 /log
 /target
 /resources/public/js/out
+/resources/public/js/dfym_out
+/resources/public/js/worker_out
 /resources/public/js/dfym.js
+/resources/public/js/worker.js
+/resources/public/js/worker.js.map

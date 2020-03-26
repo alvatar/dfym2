@@ -163,11 +163,5 @@
                (let [tx-id  (get-in tx-report [:tempids :db/current-tx])
                      datoms (:tx-data tx-report)]
                  (log* "TRANSACTIONS: " datoms))))
-  ;; Persistence
-  #_(d/listen! db :persistence
-             (fn [tx-report]
-               ;; FIXME do not notify with nil as db-report?
-               ;; FIXME do not notify if tx-data is empty?
-               (when-let [db (:db-after tx-report)]
-                 (js/setTimeout #(persist-db! db) 0)))))
+  )
 
