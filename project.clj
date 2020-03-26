@@ -49,7 +49,8 @@
                  [datascript "0.18.10"]
                  [datascript-transit "0.3.0"
                   :exclusions [com.cognitect/transit-clj
-                               com.cognitect/transit-cljs]]]
+                               com.cognitect/transit-cljs]]
+                 [servant "0.1.5"]]
 
   :plugins [[lein-cljsbuild "1.1.7"]
             [lein-environ "1.1.0" :hooks false]]

@@ -6,6 +6,8 @@
    [dfym.fixtures :as fixtures]
    [dfym.utils :as utils :refer [log*]]))
 
+(declare db)
+
 (def ^:const db-name "dfym/db")
 (def ^:const schema {:file/child {:db/valueType :db.type/ref
                                   :db/cardinality :db.cardinality/many}
@@ -20,33 +22,19 @@
 (defn db->string [db] (dt/write-transit-str db))
 (defn string->db [s] (dt/read-transit-str s))
 
-(defonce db (d/create-conn schema))
-
 (defn persist-db! [db]
   (log* "Persisting DB...")
   (js/ldb.set db-name (db->string db)))
 
-(defn load-db []
+(defn load-db! []
   (log* "Loading DB...")
   (js/ldb.get db-name (fn [stored] (when stored
                                      (let [stored-db (string->db stored)]
                                        (when-not (:schema stored-db) (log* "SCHEMA NOT FOUND!!"))
                                        (reset! db stored-db))))))
 
-;; (js/ldb.set db-name nil)
-
-(d/listen! db :log
-           (fn [tx-report]
-             (let [tx-id  (get-in tx-report [:tempids :db/current-tx])
-                   datoms (:tx-data tx-report)]
-               (log* "TRANSACTIONS: " datoms))))
-
-#_(d/listen! db :persistence
-           (fn [tx-report]
-             ;; FIXME do not notify with nil as db-report?
-             ;; FIXME do not notify if tx-data is empty?
-             (when-let [db (:db-after tx-report)]
-               (js/setTimeout #(persist-db! db) 0))))
+(defn clear-db! []
+  (js/ldb.set db-name nil))
 
 ;;
 ;; Data functions
@@ -164,6 +152,22 @@
   ;; id:dropbox is the root id for this remote drive
   (go-to-folder! "id:dropbox"))
 
-;; Init
+;; Main init function
+(defn init! []
+  "Initialize all the resources required by the DB. Call only once."
+  (def db (d/create-conn schema))
+  (load-db!)
+  ;; Logging
+  (d/listen! db :log
+             (fn [tx-report]
+               (let [tx-id  (get-in tx-report [:tempids :db/current-tx])
+                     datoms (:tx-data tx-report)]
+                 (log* "TRANSACTIONS: " datoms))))
+  ;; Persistence
+  #_(d/listen! db :persistence
+             (fn [tx-report]
+               ;; FIXME do not notify with nil as db-report?
+               ;; FIXME do not notify if tx-data is empty?
+               (when-let [db (:db-after tx-report)]
+                 (js/setTimeout #(persist-db! db) 0)))))
 
-(load-db)
