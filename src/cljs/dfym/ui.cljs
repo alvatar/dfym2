@@ -101,23 +101,11 @@
             tag])]
    [:.div.panel-bottom]])
 
-;; (defn filtering-active? [db]
-;;   (db/get-current-filtered-folder db))
-
-;; (defn current-folder [db]
-;;   (or (db/get-current-filtered-folder db)
-;;       (db/get-current-folder db)))
-
-;; (defn is-top-folder? [db folder]
-;;   (if (filtering-active? db)
-;;     (= folder "id:dropbox")
-;;     ()))
+(defn play-file [file-id]
+  (log* "PLAY! " file-id))
 
 (rum/defc file-listing [db]
   (let [{:keys [id user-name]} (db/get-user db)]
-    (log* "CURRENT VAR" (db/get-system-attr :current-folder))
-    (log* "PREVIOUS CURRENT VAR" (db/get-system-attr :previous-current-folder))
-    (log* "TOP? " (db/is-top-folder? db))
     [:div.panel
      [:h2 "FILTERED FILES"
       [:div.top-operations {:style {:font-weight "normal"}} "[Logged in as: " user-name "]"]
@@ -126,10 +114,9 @@
       [:div.top-operations {:on-click #(actions/get-files id)}
        "Refresh"]]
      [:div
-      (let [contents (for [{eid :db/id
-                            file-id :file/id
-                            file-name :file/name} (sort-by :file/name (db/get-current-folder-elements db))]
-                       (if true         ; TODO, folder?
+      (let [contents (for [[eid file-id file-name folder?]
+                           (sort-by #(nth % 2) (db/get-current-folder-elements db))]
+                       (if folder?
                          [:.dir {:key file-id
                                  :on-click #(db/go-to-folder! file-id)
                                  :on-drag-enter #(oset! (.-target %) "className" "dir-hover")
@@ -141,11 +128,25 @@
                                             (db/link-tag! eid
                                                           ;; ID sent from the draggable
                                                           (js/parseInt (.getData (.-dataTransfer ev) "ID"))))}
-                          (str file-name)]))]
+                          (str file-name)]
+                         [:.file {:key file-id
+                                  :on-click #(play-file file-id)
+                                  ;; :on-drag-enter #(oset! (.-target %) "className" "dir-hover")
+                                  ;; :on-drag-leave #(oset! (.-target %) "className" "dir")
+                                  ;; :on-drag-over #(.preventDefault %)
+                                  ;; :on-drop (fn [ev]
+                                  ;;            (.preventDefault ev)
+                                  ;;            (oset! (.-target ev) "className" "dir")
+                                  ;;            (db/link-tag! eid
+                                  ;;                          ;; ID sent from the draggable
+                                  ;;                          (js/parseInt (.getData (.-dataTransfer ev) "ID"))))
+                                  }
+                          (str "▨ " file-name)]))]
+        (log* "TOp value:" (boolean (db/is-top-folder? db)))
         (if (db/is-top-folder? db)
           contents
-          (cons [[:.file.dir {:key "parent-folder"
-                              :on-click #(db/go-to-parent-folder! db)}
+          (cons [[:.dir {:key "parent-folder"
+                         :on-click #(db/go-to-parent-folder! db)}
                   "../"]]
                 contents)))]
      [:.div.panel-bottom]]))

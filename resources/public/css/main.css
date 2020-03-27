@@ -66,16 +66,20 @@ body{
 
 .file {
     font-size: 18px;
-    font-weight: normal;
-    padding: 2px;
-    margin: 5px 10px 15px 10px;
+    font-weight: bold;
+    padding: 5px 10px 5px 5px;
+    margin: 5px 5px 5px 5px;
     cursor: pointer;
 }
 
 .file-hover {
+    font-size: 18px;
+    font-weight: normal;
+    padding: 3px 8px 3px 3px;
+    margin: 5px 5px 5px 5px;
+    cursor: pointer;
     border-style: solid;
     border-width: 2px;
-    padding: 0px;
 }
 
 .dir {

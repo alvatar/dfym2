@@ -10,6 +10,7 @@
 
 
 (def dropbox-url "https://api.dropboxapi.com/")
+(def dropbox-content-url "https://content.dropboxapi.com/")
 
 (defn -file-storage-token [code]
   (some-> (http/post (str dropbox-url "oauth2/token")
@@ -43,6 +44,15 @@
                      :body
                      (json/parse-string true)))
       'ok)))
+
+(defn -file-get-link [token file-id]
+  (some-> (http/post (str dropbox-url "/2/files/get_temporary_link")
+                     {:headers {"Authorization" (str "Bearer " token)}
+                      :content-type :json
+                      :throw-exceptions false
+                      :form-params {"path" file-id}})
+          :body
+          (json/parse-string true)))
 
 (defrecord DropboxAdapter []
 

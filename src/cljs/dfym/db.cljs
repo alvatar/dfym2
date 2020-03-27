@@ -99,11 +99,15 @@
        db))
 
 (defn get-folder-elements [db file]
-  (d/q '[:find [(pull ?children [:db/id :file/id :file/name]) ...]
+  ;;[(pull ?children [:db/id :file/id :file/name]) ...]
+  (d/q '[:find ?child ?child-id ?child-name ?folder?
          :in $ ?parent-id
          :where
          [?parent :file/id ?parent-id]
-         [?parent :file/child ?children]]
+         [?parent :file/child ?child]
+         [?child :file/id ?child-id]
+         [?child :file/name ?child-name]
+         [(get-else $ ?child :file/child false) ?folder?]]
        db
        file))
 
@@ -122,10 +126,13 @@
                      (concat (list id) (get-system-attr :current-folder))))
 
 (defn get-filtered-files [db]
-  (d/q '[:find [(pull ?file [:db/id :file/id :file/name]) ...]
+  (d/q '[:find ?file ?file-id ?file-name ?folder?
          :where
          [_ :filter/tag ?te]
-         [?te :tag/file ?file]]
+         [?te :tag/file ?file]
+         [?file :file/id ?file-id]
+         [?file :file/name ?file-name]
+         [(get-else $ ?file :file/child false) ?folder?]]
        db))
 
 (defn get-current-folder [db]
@@ -142,8 +149,9 @@
                      (not-empty (drop 1 (get-system-attr :current-folder)))))
 
 (defn is-top-folder? [db]
-  (when-let [current (get-system-attr :current-folder)]
-    (= (first current) "id:dropbox")))
+  (let [current-folder (get-system-attr :current-folder)]
+    (or (not current-folder)
+        (= (first current-folder) "id:dropbox"))))
 
 (defn set-files! [files]
   "This function expects the data as {:name [id children]}"

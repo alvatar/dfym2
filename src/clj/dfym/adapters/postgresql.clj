@@ -178,6 +178,12 @@ The folder chain has the following structure:
 (defn db-name->dropbox-id [id]
   (str "id:" (String. (base58/decode id))))
 
+(defn get-file-by [by]
+  (fn [id]
+    (jdbc/query db [(format "SELECT * FROM files WHERE %s = ?" (keyword->column by)) id]
+                {:identifiers #(.replace % \_ \-)
+                 :result-set-fn first})))
+
 (defn -create-file! [user-id {:keys [path-display path-lower name folder? storage id size rev] :as file-map}]
   ;; We must use path-lower for building the tree, because path display is inconsistent
   (let [folder-chain (prepend-cache-root user-id storage
@@ -215,9 +221,6 @@ The folder chain has the following structure:
                                                storage
                                                (filter not-empty
                                                        (-> % :path-display (string/split #"/"))))]
-                                     #_(when (= (:name %) "__misc")
-                                       (println path)
-                                       (pprint %))
                                      (cache-put! path %)
                                      %)})
              (get-in @files-cache root-path)
@@ -234,12 +237,8 @@ The folder chain has the following structure:
     [tr db]
 
     ;; HERE!!! DELETE TAGS AND FILE TAGS
-    ;; CLIENT:
-    ;; 1. Change DB
-    ;; 2. Register pending operations to inform the DB
-    ;; 3. Send those operations
-    ;; 4. Only delete those operations to inform in the client when confirmation has been received
-    ;; 5. Those changes are saved in localDB for retrying later
+    ;; The client sends transactions for the server to execute and keep in sync. The client then
+    ;; is able to freeze the last data (save it). This happens in the webworker.
 
     ;; (doseq [tag tags]
     ;;   (let [tag (assoc tag :user_id user-id)
