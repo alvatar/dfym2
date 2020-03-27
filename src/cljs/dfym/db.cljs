@@ -13,11 +13,12 @@
                                   :db/cardinality :db.cardinality/many}
                      :file/id {:db/unique :db.unique/identity}
                      :tag/name {:db/unique :db.unique/identity}
+                     :tag/file {:db/valueType :db.type/ref
+                                :db/cardinality :db.cardinality/many}
                      :filter/tag {:db/valueType :db.type/ref
                                   :db/unique :db.unique/identity}
-                     :file/tags {:db/cardinality :db.cardinality/many}
-                     :tag/files {:db/cardinality :db.cardinality/many
-                                 :db/index true}})
+                     ;;:file/tags {:db/cardinality :db.cardinality/many}
+                     })
 
 (defn db->string [db] (dt/write-transit-str db))
 (defn string->db [s] (dt/read-transit-str s))
@@ -47,11 +48,11 @@
 (defn set-system-attrs! [& args]
   (d/transact! db
                (for [[attr value] (partition 2 args)]
-                 (if value
+                 (if (nil? value)
                    ;; ID 1 is a convention here.
-                   [:db/add 1 attr value]
-                   [:db.fn/retractAttribute 0 attr])))
-  'ok)
+                   [:db.fn/retractAttribute 1 attr]
+                   [:db/add 1 attr value])))
+  true)
 
 (defn get-system-attr
   ([attr]
@@ -61,10 +62,15 @@
   ([db attr & attrs]
    (mapv #(get-system-attr db %) (concat [attr] attrs))))
 
+;; User
+
+(defn get-user [db] (get-system-attr db :user))
+
 ;; Tags
 
 (defn create-tag! [name]
-  (d/transact! db [{:tag/name name}]))
+  (d/transact! db [{:tag/name name}])
+  true)
 
 (defn get-tags [db]
   (d/q '[:find ?e ?tag
@@ -78,73 +84,66 @@
 (defn delete-tag! [id]
   'TODO)
 
-;; Filters
-
-(defn get-filter-tags [db]
-  (d/q '[:find ?fe ?e ?tag
-         :where
-         [?fe :filter/tag ?e]
-         [?e :tag/name ?tag]]
-       db))
-
-(defn add-filter-tag! [tag]
-  (d/transact! db [{:filter/tag tag}])
+(defn link-tag! [file-id tag-id]
+  (d/transact! db [{:db/id tag-id :tag/file file-id}])
   true)
-
-(defn remove-filter-tag! [tag-id]
-  (d/transact! db [[:db.fn/retractEntity tag-id]])
-  true)
-
-;; Tag linking
-
-(defn link-tag! [file-id tag]
-  'TODO)
 
 (defn unlink-tag! [file-id tag]
   'TODO)
 
 ;; Files
 
-(defn get-by-name [name]
-  (d/q '[:find (pull ?file [*]) .
-         :in $ ?name
-         :where [?file :file/name ?name]]
-       @db
-       name))
-
-(defn get-root []
-  (d/q '[:find (pull ?file [*]) .
+(defn get-root [db]
+  (d/q '[:find (pull ?file [:db/id :file/id :file/name]) .
          :where [?file :file/name "dropbox"]]
-       @db))
+       db))
 
-(defn get-folder-elements [file]
-  (d/q '[:find [(pull ?children [:file/id :file/name]) ...]
+(defn get-folder-elements [db file]
+  (d/q '[:find [(pull ?children [:db/id :file/id :file/name]) ...]
          :in $ ?parent-id
          :where
          [?parent :file/id ?parent-id]
          [?parent :file/child ?children]]
-       @db
+       db
        file))
 
-(defn get-folder-parent [file]
+(defn get-folder-parent [db file]
   (d/q '[:find ?parent-id .
          :in $ ?child-id
          :where
          [?child :file/id ?child-id]
          [?parent :file/child ?child]
          [?parent :file/id ?parent-id]]
-       @db
+       db
        file))
 
 (defn go-to-folder! [id]
-  (set-system-attrs! :current-folder id))
-
-(defn get-current-folder []
-  (get-folder-elements (get-system-attr :current-folder)))
-
-(defn go-to-parent-folder! []
   (set-system-attrs! :current-folder
-                     (get-folder-parent (get-system-attr :current-folder))))
+                     (concat (list id) (get-system-attr :current-folder))))
+
+(defn get-filtered-files [db]
+  (d/q '[:find [(pull ?file [:db/id :file/id :file/name]) ...]
+         :where
+         [_ :filter/tag ?te]
+         [?te :tag/file ?file]]
+       db))
+
+(defn get-current-folder [db]
+  (first (get-system-attr :current-folder)))
+
+(defn get-current-folder-elements [db]
+  (let [current-folder (get-current-folder db)]
+    (if current-folder
+      (get-folder-elements db current-folder)
+      (get-filtered-files db))))
+
+(defn go-to-parent-folder! [db]
+  (set-system-attrs! :current-folder
+                     (not-empty (drop 1 (get-system-attr :current-folder)))))
+
+(defn is-top-folder? [db]
+  (when-let [current (get-system-attr :current-folder)]
+    (= (first current) "id:dropbox")))
 
 (defn set-files! [files]
   "This function expects the data as {:name [id children]}"
@@ -152,7 +151,35 @@
   ;; id:dropbox is the root id for this remote drive
   (go-to-folder! "id:dropbox"))
 
+;; Filters Tags
+
+(defn get-filter-tags [db]
+  (d/q '[:find ?fe ?te ?tag
+         :where
+         [?fe :filter/tag ?te]
+         [?te :tag/name ?tag]]
+       db))
+
+(defn add-filter-tag! [tag]
+  (when-not (get-system-attr :previous-current-folder)
+    (set-system-attrs! :previous-current-folder (get-system-attr :current-folder))
+    (set-system-attrs! :current-folder nil))
+  (d/transact! db [{:filter/tag tag}])
+  true)
+
+(defn remove-filter-tag! [tag-id]
+  (d/transact! db [[:db.fn/retractEntity tag-id]])
+  (if (not-empty (get-filter-tags @db))
+    (go-to-folder! (last (get-system-attr :current-folder)))
+    ;; When we remove the last filter tag
+    (do (set-system-attrs! :current-folder (get-system-attr :previous-current-folder))
+        (set-system-attrs! :previous-current-folder nil)))
+  true)
+
+;;
 ;; Main init function
+;;
+
 (defn init! []
   "Initialize all the resources required by the DB. Call only once."
   (def db (d/create-conn schema))
@@ -162,6 +189,5 @@
              (fn [tx-report]
                (let [tx-id  (get-in tx-report [:tempids :db/current-tx])
                      datoms (:tx-data tx-report)]
-                 (log* "TRANSACTIONS: " datoms))))
-  )
+                 (log* "TRANSACTIONS: " datoms)))))
 

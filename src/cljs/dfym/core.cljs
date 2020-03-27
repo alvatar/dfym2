@@ -42,6 +42,8 @@
              (fn [tx-report]
                ;; FIXME do not notify with nil as db-report?
                ;; FIXME do not notify if tx-data is empty?
+               ;; TODO: Idea. Have a copy of the DB in the webworker, and instead of sending the DB,
+               ;; send the transactions, and duplicate the behavior there
                (when-let [db (:db-after tx-report)]
                  ;; (js/setTimeout #(db/persist-db! db) 500)
                  ;; The 500 millisecond delay provides a smoother UI experience, since serialization
@@ -55,5 +57,5 @@
 
 (defonce _init (init!))
 
-
-
+;; For development with Figwheel
+(ui/init!)

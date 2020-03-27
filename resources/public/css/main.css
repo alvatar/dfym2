@@ -63,3 +63,35 @@ body{
     border-color: black;
     outline: none;
 }
+
+.file {
+    font-size: 18px;
+    font-weight: normal;
+    padding: 2px;
+    margin: 5px 10px 15px 10px;
+    cursor: pointer;
+}
+
+.file-hover {
+    border-style: solid;
+    border-width: 2px;
+    padding: 0px;
+}
+
+.dir {
+    font-size: 18px;
+    font-weight: normal;
+    padding: 5px 10px 5px 5px;
+    margin: 5px 5px 5px 5px;
+    cursor: pointer;
+}
+
+.dir-hover {
+    font-size: 18px;
+    font-weight: normal;
+    padding: 3px 8px 3px 3px;
+    margin: 5px 5px 5px 5px;
+    cursor: pointer;
+    border-style: solid;
+    border-width: 2px;
+}

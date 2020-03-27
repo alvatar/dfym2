@@ -12,8 +12,8 @@
      ;; Normalize
      [:link {:rel "stylesheet" :href "css/normalize.css"}]
      [:link {:rel "stylesheet" :href "css/simplegrid.css"}]
-     ;; Special
-     [:link {:rel "stylesheet" :href "css/special.css"}]
+     ;; Main CSS
+     [:link {:rel "stylesheet" :href "css/main.css"}]
      ;; IndexDB storage
      [:script {:src "js/localStorageDB.min.js" :type "text/javascript"}]
      ;; Media player
