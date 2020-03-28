@@ -64,4 +64,6 @@
   (file-storage-token [self code]
     (-file-storage-token code))
   (file-storage-sync [self user-id token data-chunk-fn]
-    (-file-storage-sync user-id token data-chunk-fn)))
+    (-file-storage-sync user-id token data-chunk-fn))
+  (get-file-link [self token file-id]
+    (-file-get-link token file-id)))

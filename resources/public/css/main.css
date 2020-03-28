@@ -74,7 +74,7 @@ body{
 
 .file-hover {
     font-size: 18px;
-    font-weight: normal;
+    font-weight: bold;
     padding: 3px 8px 3px 3px;
     margin: 5px 5px 5px 5px;
     cursor: pointer;

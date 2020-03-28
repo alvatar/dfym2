@@ -13,6 +13,7 @@
   ;; Files
   (get-files [self user-id] "Get user files listing")
   (create-file! [self user-id file-map] "Create a new file for a user")
+  (get-file [self user-id file-id] "Get the file metadata")
   ;; Tags
   (create-tag! [self user-id tag] "Create new tag")
   (get-tags [self user-id] "Get user file tags")
@@ -26,4 +27,5 @@
   "An adapter for file storages"
 
   (file-storage-token [self code] "Get a user token")
-  (file-storage-sync [self user-id token data-chunk-fn] "Get list of files from the storage"))
+  (file-storage-sync [self user-id token data-chunk-fn] "Get list of files from the storage")
+  (get-file-link [self token file-id] "Get the streamable link from the provider"))

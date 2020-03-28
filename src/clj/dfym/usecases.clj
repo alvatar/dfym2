@@ -37,19 +37,23 @@
         (select-keys user [:id :user-name :dropbox-token])))))
 
 (defn create-user [user-name user-password]
+  "Usecase: create user"
   (adapters/create-user! repository
                          {:user-name user-name
                           :password (hashers/derive user-password {:alg :bcrypt+sha512})}))
 
 (defn get-user-token [user-id tmp-code]
+  "Usecase: get user token"
   (if-let [token (adapters/file-storage-token file-storage tmp-code)]
     (adapters/update-user! repository {:id user-id :dropbox-token token})
     (throw (Exception. "no token received from Dropbox"))))
 
 (defn get-user [user-map]
+  "Usecase: get user"
   (adapters/get-user repository user-map))
 
 (defn update-user! [user-map]
+  "Usecase: update user"
   (adapters/update-user! repository user-map))
 
 ;;
@@ -57,9 +61,8 @@
 ;;
 
 (defn valid-extension? [filename]
-  (when (> (count filename) 3)
-    (let [extension (subs filename (- (.length filename) 3))]
-      (some #(= extension %) ["mp3" "flac" "ogg" "wav" "mp4" "mpc" "m4a" "m4b" "m4p" "webm" "wv" "wma" "raw" "aa" "aiff"]))))
+  (some (partial string/ends-with? filename)
+        ["mp3" "flac" "ogg" "wav" "mp4" "mpc" "m4a" "m4b" "m4p" "webm" "wv" "wma" "raw" "aa" "aiff"]))
 
 (defn format-tree [files-tree]
   (-> (letfn [(shrink-branch [m k v]
@@ -77,6 +80,7 @@
       (get "dropbox")))
 
 (defn get-files [user-id]
+  "Usecase: get files"
   (format-tree
    (adapters/get-files repository user-id)))
 
@@ -96,28 +100,35 @@
                                 :rev rev})))))
 
 (defn resync-files! [user-id]
+  "Usecase: resync files"
   (let [{token :dropbox-token} (adapters/get-user repository {:id user-id})]
     (adapters/file-storage-sync file-storage user-id token files-saver!)))
+
+(defn get-file-link [user-id file-id]
+  "Usecase: get file link"
+  (let [{token :dropbox-token} (adapters/get-user repository {:id user-id})
+        {path :path-display} (adapters/get-file repository user-id file-id)]
+    (adapters/get-file-link file-storage token path)))
 
 ;;
 ;; Tags
 ;;
 
-(defn get-tags [user-id]
-  (adapters/get-tags repository user-id))
+;; (defn get-tags [user-id]
+;;   (adapters/get-tags repository user-id))
 
-(defn update-tag! [user-id tag]
-  (adapters/update-tag! repository user-id tag))
+;; (defn update-tag! [user-id tag]
+;;   (adapters/update-tag! repository user-id tag))
 
-(defn delete-tag! [user-id tag]
-  (adapters/delete-tag! repository user-id tag))
+;; (defn delete-tag! [user-id tag]
+;;   (adapters/delete-tag! repository user-id tag))
 
 ;;
 ;; Tag links
 ;;
 
-(defn link-tag! [user-id file-id tag]
-  (adapters/link-tag! repository user-id file-id tag))
+;; (defn link-tag! [user-id file-id tag]
+;;   (adapters/link-tag! repository user-id file-id tag))
 
-(defn unlink-tag! [user-id file-id tag]
-  (adapters/unlink-tag! repository user-id file-id tag))
+;; (defn unlink-tag! [user-id file-id tag]
+;;   (adapters/unlink-tag! repository user-id file-id tag))

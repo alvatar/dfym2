@@ -57,12 +57,12 @@
                  (usecases/get-user (get ?data :user))
                  error-unauthorized))))
 
-(defmethod -event-msg-handler :user/update!
-  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (let [{:keys [user-id]} ?data]
-    (?reply-fn (if (authorized-user? ev-msg)
-                 (usecases/update-user! (get ?data :user))
-                 error-unauthorized))))
+;; (defmethod -event-msg-handler :user/update!
+;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+;;   (let [{:keys [user-id]} ?data]
+;;     (?reply-fn (if (authorized-user? ev-msg)
+;;                  (usecases/update-user! (get ?data :user))
+;;                  error-unauthorized))))
 
 ;; Files
 
@@ -78,37 +78,44 @@
                (usecases/resync-files! (get-in ?data [:user :id]))
                error-unauthorized)))
 
+(defmethod -event-msg-handler :file/get-link
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+  (?reply-fn (if (authorized-user? ev-msg)
+               (usecases/get-file-link (get-in ?data [:user :id])
+                                       (get-in ?data [:file :id]))
+               error-unauthorized)))
+
 ;; Tags & tag links
 
-(defmethod -event-msg-handler :tags/get
-  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (?reply-fn (if (authorized-user? ev-msg)
-               (usecases/get-tags (get-in ?data [:user :id]))
-               error-unauthorized)))
+;; (defmethod -event-msg-handler :tags/get
+;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+;;   (?reply-fn (if (authorized-user? ev-msg)
+;;                (usecases/get-tags (get-in ?data [:user :id]))
+;;                error-unauthorized)))
 
-(defmethod -event-msg-handler :tag/update!
-  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  "Expects the data to be a regular tag, where the id is references the tag to be updated"
-  (?reply-fn (if (authorized-user? ev-msg)
-               (usecases/update-tag! (get-in ?data [:user :id])
-                                     (get ?data :tag))
-               error-unauthorized)))
+;; (defmethod -event-msg-handler :tag/update!
+;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+;;   "Expects the data to be a regular tag, where the id is references the tag to be updated"
+;;   (?reply-fn (if (authorized-user? ev-msg)
+;;                (usecases/update-tag! (get-in ?data [:user :id])
+;;                                      (get ?data :tag))
+;;                error-unauthorized)))
 
-(defmethod -event-msg-handler :tag/link!
-  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (?reply-fn (if (authorized-user? ev-msg)
-               (usecases/link-tag! (get-in ?data [:user :id])
-                                   (get-in ?data [:file :id])
-                                   (get ?data :tag))
-               error-unauthorized)))
+;; (defmethod -event-msg-handler :tag/link!
+;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+;;   (?reply-fn (if (authorized-user? ev-msg)
+;;                (usecases/link-tag! (get-in ?data [:user :id])
+;;                                    (get-in ?data [:file :id])
+;;                                    (get ?data :tag))
+;;                error-unauthorized)))
 
-(defmethod -event-msg-handler :tag/unlink!
-  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (?reply-fn (if (authorized-user? ev-msg)
-               (usecases/unlink-tag! (get-in ?data [:user :id])
-                                     (get-in ?data [:file :id])
-                                     (get ?data :tag))
-               error-unauthorized)))
+;; (defmethod -event-msg-handler :tag/unlink!
+;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+;;   (?reply-fn (if (authorized-user? ev-msg)
+;;                (usecases/unlink-tag! (get-in ?data [:user :id])
+;;                                      (get-in ?data [:file :id])
+;;                                      (get ?data :tag))
+;;                error-unauthorized)))
 
 ;;
 ;; Controller

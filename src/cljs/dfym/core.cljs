@@ -55,7 +55,9 @@
   (ui/init!)
   (client/start-router!))
 
-(defonce _init (init!))
+(defn refresh! []
+  "For development"
+  (ui/render))
 
-;; For development with Figwheel
-(ui/init!)
+(defonce _init? (atom false))
+(if @_init? (refresh!) (do (reset! _init? true) (init!)))

@@ -86,7 +86,6 @@
 ;; Users
 ;;
 
-
 (defn -create-user! [{:keys [name password first-name family-name]}]
   (first
    (jdbc/query db ["
@@ -179,10 +178,13 @@ The folder chain has the following structure:
   (str "id:" (String. (base58/decode id))))
 
 (defn get-file-by [by]
-  (fn [id]
-    (jdbc/query db [(format "SELECT * FROM files WHERE %s = ?" (keyword->column by)) id]
+  (fn [user-id id]
+    (jdbc/query db [(format "SELECT * FROM files WHERE user_id = ? AND %s = ?" (keyword->column by)) user-id id]
                 {:identifiers #(.replace % \_ \-)
                  :result-set-fn first})))
+
+(defn -get-file [user-id file-id]
+  ((get-file-by :dropbox-id) user-id file-id))
 
 (defn -create-file! [user-id {:keys [path-display path-lower name folder? storage id size rev] :as file-map}]
   ;; We must use path-lower for building the tree, because path display is inconsistent
@@ -201,9 +203,6 @@ The folder chain has the following structure:
                              :size size})]
     (cache-put! folder-chain (->kebab-case entry))
     (jdbc/insert! db :files entry)))
-
-(defn delete-all-files!!! []
-  (jdbc/delete! db :files []))
 
 (defn -get-files [user-id storage]
   (when-not (number? user-id) (throw (Exception. "-get-files: user Id should be a number")))
@@ -225,6 +224,13 @@ The folder chain has the following structure:
                                      %)})
              (get-in @files-cache root-path)
              ))}))
+
+(defn delete-user-files! [user-id]
+  (jdbc/delete! db :files ["user_id = ? CASCADE" user-id]))
+
+;;
+;; Tags
+;;
 
 (defn -get-tags [user-id]
   (jdbc/with-db-transaction
@@ -320,6 +326,8 @@ The folder chain has the following structure:
     (-create-file! user-id file-map))
   (get-files [self user-id]
     (-get-files user-id "dropbox"))
+  (get-file [self user-id file-id]
+    (-get-file user-id file-id))
   ;; Tags
   (get-tags [self user-id]
     (-get-tags user-id))
@@ -342,11 +350,11 @@ The folder chain has the following structure:
 (defn reset-database!!! []
   (try
     (jdbc/db-do-commands db ["DROP TABLE IF EXISTS files CASCADE;"
-                            "DROP TABLE IF EXISTS users CASCADE;"
-                            "DROP TABLE IF EXISTS files_tags CASCADE;"
-                            "DROP TABLE IF EXISTS tags CASCADE;"
-                            "DROP INDEX IF EXISTS files_path_idx;"
-                            "
+                             "DROP TABLE IF EXISTS users CASCADE;"
+                             "DROP TABLE IF EXISTS files_tags CASCADE;"
+                             "DROP TABLE IF EXISTS tags CASCADE;"
+                             "DROP INDEX IF EXISTS files_path_idx;"
+                             "
 CREATE TABLE users (
   id              SERIAL PRIMARY KEY,
   created         TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -358,10 +366,10 @@ CREATE TABLE users (
   dropbox_synced  BOOL NOT NULL DEFAULT false
 )
 "
-                            "
+                             "
 CREATE TABLE files (
   id              VARCHAR(256) PRIMARY KEY,
-  user_id         INTEGER REFERENCES users(id) NOT NULL,
+  user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
   path            LTREE,
   name            TEXT NOT NULL,
   path_display    TEXT NOT NULL,
@@ -370,35 +378,35 @@ CREATE TABLE files (
   size            BIGINT
 )
 "
-                            "
+                             "
 CREATE INDEX files_path_idx ON files USING GIST (path);
 "
-                            "
+                             "
 CREATE TABLE tags (
   id              SERIAL PRIMARY KEY,
   name            VARCHAR(1024),
-  user_id         INTEGER REFERENCES users(id) NOT NULL,
+  user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
   UNIQUE (name, user_id)
 )
 "
-                            "
+                             "
 CREATE INDEX ON tags(name);
 "
-                            "
+                             "
 CREATE TABLE files_tags (
-  file_id         VARCHAR(256) REFERENCES files(id) NOT NULL,
-  tag_id          INTEGER REFERENCES tags(id) NOT NULL,
-  user_id         INTEGER REFERENCES users(id) NOT NULL,
+  file_id         VARCHAR(256) REFERENCES files(id) ON DELETE CASCADE NOT NULL,
+  tag_id          INTEGER REFERENCES tags(id) ON DELETE CASCADE NOT NULL,
+  user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
   UNIQUE (file_id, tag_id)
 )
 "
-                            ])
+                             ])
     (catch Exception e (or e (.getNextException e))
            (pprint e)))
   ;;
   ;; Init data for development
   ;;
   (let [repo (PostgreSqlAdapter.)]
-   (adapters/create-user! repo {:name "Thor" :password "alvaro"})))
+    (adapters/create-user! repo {:name "Thor" :password "alvaro"})))
 
 ;; (require '[dfym.adapters.postgresql :as db])

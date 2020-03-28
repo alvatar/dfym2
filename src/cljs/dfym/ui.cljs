@@ -1,5 +1,6 @@
 (ns dfym.ui
   (:require
+   [taoensso.timbre :as timbre :refer-macros [tracef debugf infof warnf errorf]]
    [rum.core :as rum]
    [garden.core :refer [css]]
    [garden.stylesheet :as stylesheet]
@@ -16,6 +17,7 @@
 ;; https://github.com/madvas/jsx-to-clojurescript
 
 (declare render)
+(def player (atom nil))
 
 ;;
 ;; UI Components
@@ -101,21 +103,43 @@
             tag])]
    [:.div.panel-bottom]])
 
-(defn play-file [file-id]
-  (log* "PLAY! " file-id))
+(defonce current-playlist (atom {}))
 
-(rum/defc file-listing [db]
-  (let [{:keys [id user-name]} (db/get-user db)]
+(defn play [user-id playlist play-idx]
+  (let [[_ file-id _] (nth playlist play-idx)]
+    ;; (infof "Playing file %s" file-id)
+    (reset! current-playlist {:user-id user-id
+                              :playlist playlist
+                              :index play-idx
+                              :file-id file-id})
+    (actions/get-file-link user-id file-id
+                           #(doto @player
+                              (.setSrc (get % :link))
+                              (.load)
+                              (.play)))))
+
+(defn play-next []
+  (let [{:keys [user-id playlist index]} @current-playlist
+        playlist-length (count playlist)
+        next (if (= index (- playlist-length 1)) 0 (inc index))]
+    (play user-id playlist next)))
+
+(defn build-playlist [db]
+  (->> (db/get-current-folder-elements db)
+       (sort-by #(nth % 2))))
+
+(rum/defc file-listing < rum/reactive [db]
+  (let [{user-id :id user-name :user-name} (db/get-user db)]
     [:div.panel
      [:h2 "FILTERED FILES"
       [:div.top-operations {:style {:font-weight "normal"}} "[Logged in as: " user-name "]"]
       [:div.top-operations "Deselect_All"]
       [:div.top-operations "Select_All"]
-      [:div.top-operations {:on-click #(actions/get-files id)}
+      [:div.top-operations {:on-click #(actions/get-files user-id)}
        "Refresh"]]
      [:div
-      (let [contents (for [[eid file-id file-name folder?]
-                           (sort-by #(nth % 2) (db/get-current-folder-elements db))]
+      (let [playlist (build-playlist db)
+            contents (for [[idx [eid file-id file-name folder?]] (map-indexed (fn [i e] [i e]) playlist)]
                        (if folder?
                          [:.dir {:key file-id
                                  :on-click #(db/go-to-folder! file-id)
@@ -125,24 +149,22 @@
                                  :on-drop (fn [ev]
                                             (.preventDefault ev)
                                             (oset! (.-target ev) "className" "dir")
-                                            (db/link-tag! eid
-                                                          ;; ID sent from the draggable
-                                                          (js/parseInt (.getData (.-dataTransfer ev) "ID"))))}
+                                            ;; ID sent from the draggable
+                                            (db/link-tag! eid (js/parseInt (.getData (.-dataTransfer ev) "ID"))))}
                           (str file-name)]
                          [:.file {:key file-id
-                                  :on-click #(play-file file-id)
-                                  ;; :on-drag-enter #(oset! (.-target %) "className" "dir-hover")
-                                  ;; :on-drag-leave #(oset! (.-target %) "className" "dir")
-                                  ;; :on-drag-over #(.preventDefault %)
-                                  ;; :on-drop (fn [ev]
-                                  ;;            (.preventDefault ev)
-                                  ;;            (oset! (.-target ev) "className" "dir")
-                                  ;;            (db/link-tag! eid
-                                  ;;                          ;; ID sent from the draggable
-                                  ;;                          (js/parseInt (.getData (.-dataTransfer ev) "ID"))))
-                                  }
-                          (str "▨ " file-name)]))]
-        (log* "TOp value:" (boolean (db/is-top-folder? db)))
+                                  :on-click #(play user-id playlist idx)
+                                  :on-drag-enter #(oset! (.-target %) "className" "file-hover")
+                                  :on-drag-leave #(oset! (.-target %) "className" "file")
+                                  :on-drag-over #(.preventDefault %)
+                                  :on-drop (fn [ev]
+                                             (.preventDefault ev)
+                                             (oset! (.-target ev) "className" "file")
+                                             ;; ID sent from the draggable
+                                             (db/link-tag! eid (js/parseInt (.getData (.-dataTransfer ev) "ID"))))}
+                          (let [{index_ :index file-id_ :file-id} (rum/react current-playlist)]
+                            (str (if (and (= index_ idx) (= file-id_ file-id)) "▶ " "□ ")
+                                 file-name))]))]
         (if (db/is-top-folder? db)
           contents
           (cons [[:.dir {:key "parent-folder"
@@ -167,12 +189,12 @@
     [:div#menu-button {:on-click actions/logout} "⚙"]]])
 
 (defn make-player [player-html-element]
-  (let [player (js/MediaElementPlayer.
-                player-html-element
-                (clj->js {:stretching "responsive"
-                          :preload "auto"
-                          :features ["playpause" "current" "progress" "tracks" "duration"]}))]
-    (.addEventListener player-html-element "ended" #(js/alert "NEXT"))))
+  (reset! player (js/MediaElementPlayer.
+                  player-html-element
+                  (clj->js {:stretching "responsive"
+                            :preload "auto"
+                            :features ["playpause" "current" "progress" "tracks" "duration"]})))
+  (.addEventListener player-html-element "ended" play-next))
 
 (defn render
   ([] (render @db/db))
