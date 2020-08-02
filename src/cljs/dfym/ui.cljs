@@ -23,49 +23,49 @@
 ;; UI Components
 ;;
 
-(def styles
-  (css
-   (stylesheet/at-font-face {:font-family "VT323"
-                             :src "url(\"/fonts/VT323-Regular.ttf\")"})
-   [:body :h1 :h2 :h3 :h4 :h5 :h6 {:font-family "VT323"}]
-   [:h1 {:font-size "24px"}]
-   [:h2 {:font-size "16px"
-         :margin "0 0 10px 0"}]
-   [:h3 {:font-size "18px"
-         :padding "5px"
-         :margin "5px"}]
-   [:.rfloat {:float "right"}]
-   [:.lfloat {:float "left"}]
-   [:.top-operations {:float "right"
-                      :font-size "14px"
-                      :font-weight "bold"
-                      :margin "0 10px 0 0"
-                      :cursor "pointer"}]
-   [:.selected {:border-bottom "2px solid"
-                :font-weight "bold"}]
-   [:.scroll {:overflow "auto"}]
-   [:.no-scroll {:overflow "hidden"}]
-   [:.border {:border-style "solid"
-              :border-width "2px"}]
-   [:.panel {:overflow-y "scroll"
-             :height "100%"}]
-   [:.panel-bottom {:height "70px"}]
-   [:#controls {:width "100%"
-                :position "fixed"
-                :bottom 0}]
-   [:#menu-button {:float "left"
-                   :width "40px"
-                   :height "40px"
-                   :background-color "white"
-                   :border-top "solid 2px"
-                   :border-bottom "solid 2px"
-                   :font-size "30px"
-                   :text-align "center"
-                   :line-height "40px"
-                   :cursor "pointer"}]))
+;; (def styles
+;;   (css
+;;    (stylesheet/at-font-face {:font-family "VT323"
+;;                              :src "url(\"/fonts/VT323-Regular.ttf\")"})
+;;    [:body :h1 :h2 :h3 :h4 :h5 :h6 {:font-family "VT323"}]
+;;    [:h1 {:font-size "24px"}]
+;;    [:h2 {:font-size "16px"
+;;          :margin "0 0 10px 0"}]
+;;    [:h3 {:font-size "18px"
+;;          :padding "5px"
+;;          :margin "5px"}]
+;;    [:.rfloat {:float "right"}]
+;;    [:.lfloat {:float "left"}]
+;;    [:.top-operations {:float "right"
+;;                       :font-size "14px"
+;;                       :font-weight "bold"
+;;                       :margin "0 10px 0 0"
+;;                       :cursor "pointer"}]
+;;    [:.selected {:border-bottom "2px solid"
+;;                 :font-weight "bold"}]
+;;    [:.scroll {:overflow "auto"}]
+;;    [:.no-scroll {:overflow "hidden"}]
+;;    [:.border {:border-style "solid"
+;;               :border-width "2px"}]
+;;    [:.panel {:overflow-y "scroll"
+;;              :height "100%"}]
+;;    [:.panel-bottom {:height "70px"}]
+;;    [:#controls {:width "100%"
+;;                 :position "fixed"
+;;                 :bottom 0}]
+;;    [:#menu-button {:float "left"
+;;                    :width "40px"
+;;                    :height "40px"
+;;                    :background-color "white"
+;;                    :border-top "solid 2px"
+;;                    :border-bottom "solid 2px"
+;;                    :font-size "30px"
+;;                    :text-align "center"
+;;                    :line-height "40px"
+;;                    :cursor "pointer"}]))
 
-(defonce style-node (atom nil))
-(if @style-node
+;; (defonce style-node (atom nil))
+#_(if @style-node
   (goog.style/setStyles @style-node styles)
   (reset! style-node (goog.style/installStyles styles)))
 

@@ -1,3 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
+
+* {
+    font-family: 'VT323', monospace;
+}
+
 body{
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -5,6 +11,84 @@ body{
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+}
+
+h1 {
+    font-size: 24px;
+}
+
+h2 {
+    font-size: 16px;
+    margin: 0 0 10px 0;
+}
+
+h3 {
+    font-size: 18px;
+    padding: 5px;
+    margin: 5px;
+}
+
+.rfloat {
+    float: right;
+}
+
+.lfloat {
+    float: left;
+}
+
+.top-operations {
+    float: right;
+    font-size: 14px;
+    fint-weight: bold;
+    margin: 0 10px 0 0;
+    cursor: pointer;
+}
+
+.selected {
+    border-bottom: 2px solid;
+    font-weight: bold;
+}
+
+.scroll {
+    overflow: auto;
+}
+
+.no-scroll {
+    overflow: hidden;
+}
+
+.border {
+    border-style: solid;
+    border-width: 2px;
+}
+
+.panel {
+    overflow-y: scroll;
+    height: 100%;
+    background-color: white;
+}
+
+.panel-bottom {
+    height: 70px;
+}
+
+#controls {
+    width: 100%;
+    position: fixed;
+    bottom: 0;
+}
+
+#menu-button {
+    float: left;
+    width: 40px;
+    height: 40px;
+    background-color: white;
+    border-top: solid 2px;
+    border-bottom: solid 2px;
+    font-size: 30px;
+    text-align: center;
+    line-height: 40px;
+    curosr: pointer;
 }
 
 ::-webkit-scrollbar {

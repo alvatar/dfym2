@@ -5,31 +5,31 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
 
   :dependencies [[org.clojure/clojure "1.10.1"]
-                 [org.clojure/clojurescript "1.10.597"]
+                 [org.clojure/clojurescript "1.10.773"]
                  ;; Architecture
                  [com.stuartsierra/component "1.0.0"]
-                 [environ "1.1.0"]
+                 [environ "1.2.0"]
                  ;; Core
-                 [com.taoensso/encore "2.119.0"]
+                 [com.taoensso/encore "2.122.0"]
                  [com.taoensso/timbre "4.10.0"]
                  ;; [com.rpl/specter "1.1.2"] ; Immutable data structure manipulation
                  ;; [traversy "0.5.0"] ; Simply put, multilenses are generalisations of sequence and update-in
                  ;; Data format
                  [com.cognitect/transit-clj "1.0.324"]
-                 [com.cognitect/transit-cljs "0.8.256"]
+                 [com.cognitect/transit-cljs "0.8.264"]
                  [cheshire "5.10.0"]
                  ;; Web
-                 [ring "1.8.0"]
+                 [ring "1.8.1"]
                  [ring/ring-defaults "0.3.2"]
                  [bk/ring-gzip "0.3.0"]
                  [prone "2020-01-17"]
                  [aleph "0.4.6"]
-                 [clj-http "3.10.0"]
+                 [clj-http "3.10.1"]
                  [compojure "1.6.1"]
                  [com.taoensso/sente "1.15.0"]
                  ;; Database
                  [org.clojure/java.jdbc "0.7.11"]
-                 [org.postgresql/postgresql "42.2.11"]
+                 [org.postgresql/postgresql "42.2.14"]
                  [postgre-types "0.0.4"]
                  [buddy/buddy-core "1.6.0"]
                  [buddy/buddy-auth "2.2.0"]
@@ -39,21 +39,21 @@
                  [com.mchange/c3p0 "0.9.5.5"]
                  ;; HTML
                  [hiccup "1.0.5"]
-                 [garden "1.3.9"]
+                 [garden "1.3.10"]
                  ;; Specific
                  [camel-snake-kebab "0.4.1"]
                  ;; Cljs
                  [binaryage/oops "0.7.0"]
-                 [binaryage/devtools "1.0.0"]
-                 [rum "0.11.4"]
-                 [datascript "0.18.10"]
+                 [binaryage/devtools "1.0.2"]
+                 [rum "0.12.3"]
+                 [datascript "1.0.0"]
                  [datascript-transit "0.3.0"
                   :exclusions [com.cognitect/transit-clj
                                com.cognitect/transit-cljs]]
                  [butler "0.2.0"]]
 
-  :plugins [[lein-cljsbuild "1.1.7"]
-            [lein-environ "1.1.0" :hooks false]]
+  :plugins [[lein-cljsbuild "1.1.8"]
+            [lein-environ "1.2.0" :hooks false]]
 
   ;;:jvm-opts ["--add-modules" "java.xml.bind"]
 
@@ -156,12 +156,12 @@
   :doo {:build "test"}
 
   :profiles {:dev
-             {:dependencies [[figwheel "0.5.19"]
-                             [figwheel-sidecar "0.5.19"]
-                             [cider/piggieback "0.4.2"]
+             {:dependencies [[figwheel "0.5.20"]
+                             [figwheel-sidecar "0.5.20"]
+                             [cider/piggieback "0.5.0"]
                              [org.clojure/tools.nrepl "0.2.13"]
                              [midje "1.9.9"]]
-              :plugins [[lein-figwheel "0.5.19"]
+              :plugins [[lein-figwheel "0.5.20"]
                         [lein-doo "0.1.11"]
                         [lein-ancient "0.6.15"]
                         [lein-midje "3.2.2"]]
