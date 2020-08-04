@@ -89,10 +89,12 @@
     [:div
      [:h2 "FILTERED FILES"
       [:div.top-operations {:style {:font-weight "normal"}} "[Logged in as: " user-name "]"]
-      [:div.top-operations "Deselect_All"]
-      [:div.top-operations "Select_All"]
       [:div.top-operations {:on-click #(actions/get-files user-id)}
-       "Refresh"]]
+       "Refresh ◌"]
+      [:div.top-operations {:on-click #(js/alert "I don't wanna")} "Deselect_All □"]
+      [:div.top-operations {:on-click #(js/alert "select your ass!")} "Select_All ▦"]
+      [:div.top-operations {:on-click #(js/alert "random shit in your fan!")}
+       "Randomize ☲"]]
      [:div.panel
       (let [playlist (build-playlist db)
             contents (for [[idx [eid file-id file-name folder?]] (map-indexed (fn [i e] [i e]) playlist)]
