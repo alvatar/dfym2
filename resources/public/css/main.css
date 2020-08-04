@@ -66,10 +66,31 @@ h3 {
     overflow-y: scroll;
     height: 100%;
     background-color: white;
+    scrollbar-color: black white;
+    scrollbar-width: auto;
+}
+
+.panel::-webkit-scrollbar {
+    width: 12px;
+}
+
+/* Track */
+.panel::-webkit-scrollbar-track {
+    background: #fff;
+}
+
+/* Handle */
+.panel::-webkit-scrollbar-thumb {
+    background: #000;
+}
+
+/* Handle on hover */
+.panel::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }
 
 .panel-bottom {
-    height: 70px;
+    height: 50px;
 }
 
 #controls {
@@ -89,25 +110,6 @@ h3 {
     text-align: center;
     line-height: 40px;
     curosr: pointer;
-}
-
-::-webkit-scrollbar {
-    width: 2px;
-}
-
-/* Track */
-::-webkit-scrollbar-track {
-    background: #fff;
-}
-
-/* Handle */
-::-webkit-scrollbar-thumb {
-    background: #000;
-}
-
-/* Handle on hover */
-::-webkit-scrollbar-thumb:hover {
-    background: #555;
 }
 
 #player {

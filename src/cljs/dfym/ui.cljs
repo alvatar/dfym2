@@ -23,59 +23,13 @@
 ;; UI Components
 ;;
 
-;; (def styles
-;;   (css
-;;    (stylesheet/at-font-face {:font-family "VT323"
-;;                              :src "url(\"/fonts/VT323-Regular.ttf\")"})
-;;    [:body :h1 :h2 :h3 :h4 :h5 :h6 {:font-family "VT323"}]
-;;    [:h1 {:font-size "24px"}]
-;;    [:h2 {:font-size "16px"
-;;          :margin "0 0 10px 0"}]
-;;    [:h3 {:font-size "18px"
-;;          :padding "5px"
-;;          :margin "5px"}]
-;;    [:.rfloat {:float "right"}]
-;;    [:.lfloat {:float "left"}]
-;;    [:.top-operations {:float "right"
-;;                       :font-size "14px"
-;;                       :font-weight "bold"
-;;                       :margin "0 10px 0 0"
-;;                       :cursor "pointer"}]
-;;    [:.selected {:border-bottom "2px solid"
-;;                 :font-weight "bold"}]
-;;    [:.scroll {:overflow "auto"}]
-;;    [:.no-scroll {:overflow "hidden"}]
-;;    [:.border {:border-style "solid"
-;;               :border-width "2px"}]
-;;    [:.panel {:overflow-y "scroll"
-;;              :height "100%"}]
-;;    [:.panel-bottom {:height "70px"}]
-;;    [:#controls {:width "100%"
-;;                 :position "fixed"
-;;                 :bottom 0}]
-;;    [:#menu-button {:float "left"
-;;                    :width "40px"
-;;                    :height "40px"
-;;                    :background-color "white"
-;;                    :border-top "solid 2px"
-;;                    :border-bottom "solid 2px"
-;;                    :font-size "30px"
-;;                    :text-align "center"
-;;                    :line-height "40px"
-;;                    :cursor "pointer"}]))
-
-;; (defonce style-node (atom nil))
-#_(if @style-node
-  (goog.style/setStyles @style-node styles)
-  (reset! style-node (goog.style/installStyles styles)))
-
 (rum/defcs tags < rum/reactive
   (rum/local "" ::new-tag)
   [state db]
   (let [new-tag (::new-tag state)]
     [:div
+     [:h2 "ALL TAGS"]
      [:div.panel
-      [:h2 "TAGS"]
       [:div {:style {:width "100%"}}
        [:input.add-tag {:type "text"
                         :placeholder "Add tag..."
@@ -95,13 +49,15 @@
       [:div.panel-bottom]]]))
 
 (rum/defc filter-tags [db]
-  [:div.panel
+  [:div
    [:h2 "SELECTED TAGS"]
-   [:div (for [[filter-id id tag] (db/get-filter-tags db)]
-           [:.tag {:key id
-                   :on-mouse-down #(dfym.db/remove-filter-tag! filter-id)}
-            tag])]
-   [:.div.panel-bottom]])
+   [:div.panel {:style {:height "60%"}}
+    (for [[filter-id id tag] (db/get-filter-tags db)]
+      [:.tag {:key id
+              :on-mouse-down #(dfym.db/remove-filter-tag! filter-id)}
+       tag])
+    [:.div.panel-bottom]]
+   ])
 
 (defonce current-playlist (atom {}))
 
@@ -130,14 +86,14 @@
 
 (rum/defc file-listing < rum/reactive [db]
   (let [{user-id :id user-name :user-name} (db/get-user db)]
-    [:div.panel
+    [:div
      [:h2 "FILTERED FILES"
       [:div.top-operations {:style {:font-weight "normal"}} "[Logged in as: " user-name "]"]
       [:div.top-operations "Deselect_All"]
       [:div.top-operations "Select_All"]
       [:div.top-operations {:on-click #(actions/get-files user-id)}
        "Refresh"]]
-     [:div
+     [:div.panel
       (let [playlist (build-playlist db)
             contents (for [[idx [eid file-id file-name folder?]] (map-indexed (fn [i e] [i e]) playlist)]
                        (if folder?
@@ -176,12 +132,13 @@
 (rum/defc app [db]
   [:div.no-scroll {:style {:width "100%" :height "100%"}}
    [:div {:style {:padding "20px"}}
-    [:div.col-1-4 {:style {:padding "0 8px 0 20px"}}
-     (tags db)]
-    [:div.col-2-4 {:style {:width "50%"}}
+    [:div.col-3-4 {:style {:width "75%"}}
      (file-listing db)]
-    [:div.col-1-4 {:style {:padding "0 8px 0 0px"}}
-     (filter-tags db)]]
+    [:div.col-1-4 {:style {:padding "0 8px 0 20px"}}
+     [:div {:style {:height "65%" :padding-bottom "20px"}}
+      (tags db)]
+     [:div {:style {:height "35%"}}
+      (filter-tags db)]]]
    [:div#controls
     [:div#player
      [:audio {:controls "controls"}
