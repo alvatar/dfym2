@@ -9,6 +9,7 @@
    [dfym.client :as client]
    [dfym.ui :as ui]
    [dfym.db :as db]
+   [dfym.actions :as actions]
    [dfym.globals :as globals]))
 
 (goog-define ^:dynamic *is-dev* false)
@@ -32,11 +33,12 @@
                              {:print-string print-string-handler
                               :print-array print-array-handler}))
 
-  (db/init!)
+  (db/init! actions/process-events)
   ;; Render on every DB change
   (d/listen! db/db :render
              (fn [tx-report]
                (ui/render (:db-after tx-report))))
+
   ;; Persist DB on every change
   (d/listen! db/db :persistence
              (fn [tx-report]

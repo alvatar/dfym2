@@ -64,7 +64,8 @@
 
 ;; User
 
-(defn get-user [db] (get-system-attr db :user))
+(defn get-user [db]
+  (get-system-attr db :user))
 
 ;; Tags
 
@@ -78,17 +79,20 @@
          [?e :tag/name ?tag]]
        db))
 
+(defn get-tag-name [db eid]
+  (d/pull db [:tag/name] eid))
+
 (defn update-tag! [[id tag]]
   'TODO)
 
 (defn delete-tag! [id]
   'TODO)
 
-(defn link-tag! [file-id tag-id]
+(defn attach-tag! [file-id tag-id]
   (d/transact! db [{:db/id tag-id :tag/file file-id}])
   true)
 
-(defn unlink-tag! [file-id tag]
+(defn detach-tag! [file-id tag]
   'TODO)
 
 ;; Files
@@ -97,6 +101,9 @@
   (d/q '[:find (pull ?file [:db/id :file/id :file/name]) .
          :where [?file :file/name "dropbox"]]
        db))
+
+(defn get-file-info [db eid]
+  (d/pull db [:file/id :file/name] eid))
 
 (defn get-folder-elements [db file]
   ;;[(pull ?children [:db/id :file/id :file/name]) ...]
@@ -188,14 +195,16 @@
 ;; Main init function
 ;;
 
-(defn init! []
+(defn db-listener [tx-listener-callback]
+  (fn [tx-report]
+    (let [tx-id  (get-in tx-report [:tempids :db/current-tx])
+          datoms (:tx-data tx-report)]
+      (tx-listener-callback @db datoms)
+      (log* "TRANSACTIONS: " datoms))))
+
+(defn init! [tx-listener-callback]
   "Initialize all the resources required by the DB. Call only once."
   (def db (d/create-conn schema))
   (load-db!)
-  ;; Logging
-  (d/listen! db :log
-             (fn [tx-report]
-               (let [tx-id  (get-in tx-report [:tempids :db/current-tx])
-                     datoms (:tx-data tx-report)]
-                 (log* "TRANSACTIONS: " datoms)))))
-
+  ;; Log of transactions
+  (d/listen! db :log (db-listener tx-listener-callback)))

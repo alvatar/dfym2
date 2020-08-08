@@ -9,6 +9,7 @@
     [:head
      [:meta {:charset "utf-8"}]
      [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
+     [:title "dfym (don't forget your music)"]
      ;; Normalize
      [:link {:rel "stylesheet" :href "css/normalize.css"}]
      [:link {:rel "stylesheet" :href "css/simplegrid.css"}]

@@ -2,8 +2,8 @@
   (:require
    [taoensso.timbre :as timbre :refer-macros [tracef debugf infof warnf errorf]]
    [rum.core :as rum]
-   [garden.core :refer [css]]
-   [garden.stylesheet :as stylesheet]
+   ;;[garden.core :refer [css]]
+   ;;[garden.stylesheet :as stylesheet]
    [goog.style]
    [oops.core :refer [oget oset! oset!]]
    ;; -----
@@ -108,7 +108,7 @@
                                             (.preventDefault ev)
                                             (oset! (.-target ev) "className" "dir")
                                             ;; ID sent from the draggable
-                                            (db/link-tag! eid (js/parseInt (.getData (.-dataTransfer ev) "ID"))))}
+                                            (db/attach-tag! eid (js/parseInt (.getData (.-dataTransfer ev) "ID"))))}
                           (str file-name)]
                          [:.file {:key file-id
                                   :on-click #(play user-id playlist idx)
@@ -119,9 +119,9 @@
                                              (.preventDefault ev)
                                              (oset! (.-target ev) "className" "file")
                                              ;; ID sent from the draggable
-                                             (db/link-tag! eid (js/parseInt (.getData (.-dataTransfer ev) "ID"))))}
+                                             (db/attach-tag! eid (js/parseInt (.getData (.-dataTransfer ev) "ID"))))}
                           (let [{index_ :index file-id_ :file-id} (rum/react current-playlist)]
-                            (str (if (and (= index_ idx) (= file-id_ file-id)) "▶ " "□ ")
+                            (str (if (and (= index_ idx) (= file-id_ file-id)) "▶ " "▹ ")
                                  file-name))]))]
         (if (db/is-top-folder? db)
           contents

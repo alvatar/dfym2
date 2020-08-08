@@ -85,7 +85,7 @@
                                        (get-in ?data [:file :id]))
                error-unauthorized)))
 
-;; Tags & tag links
+;; Tags
 
 ;; (defmethod -event-msg-handler :tags/get
 ;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
@@ -101,13 +101,21 @@
 ;;                                      (get ?data :tag))
 ;;                error-unauthorized)))
 
-;; (defmethod -event-msg-handler :tag/link!
-;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-;;   (?reply-fn (if (authorized-user? ev-msg)
-;;                (usecases/link-tag! (get-in ?data [:user :id])
-;;                                    (get-in ?data [:file :id])
-;;                                    (get ?data :tag))
-;;                error-unauthorized)))
+(defmethod -event-msg-handler :tag/create!
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+  (?reply-fn (if (authorized-user? ev-msg)
+               (usecases/create-tag! (get-in ?data [:user :id])
+                                     (get-in ?data [:tag :name]))
+               error-unauthorized)))
+
+(defmethod -event-msg-handler :tag/attach!
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+  ;;(println "ATTACH" (get-in ?data [:user :id]) (get-in ?data [:tag :name]) (get-in ?data [:file :id]))
+  (?reply-fn (if (authorized-user? ev-msg)
+               (usecases/attach-tag! (get-in ?data [:user :id])
+                                     (get-in ?data [:file :id])
+                                     (get-in ?data [:tag :name]))
+               error-unauthorized)))
 
 ;; (defmethod -event-msg-handler :tag/unlink!
 ;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]

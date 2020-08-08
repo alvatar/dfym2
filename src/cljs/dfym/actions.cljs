@@ -34,18 +34,47 @@
 ;;                   (fn [result] (log* "TODO " result)))
 ;;    {:user {:id user}}))
 
-(defn get-files [user]
+(defn get-files [user-id]
   ((build-request :files/get (fn [result] (db/set-files! result)))
-   {:user {:id user}}))
+   {:user {:id user-id}}))
 
-(defn get-file-link [user file-id cb]
+(defn get-file-link [user-id file-id cb]
   ((build-request :file/get-link)
-   {:user {:id user}
+   {:user {:id user-id}
     :file {:id file-id}}
    cb))
 
+(defn create-tag! [user-id tag]
+  ((build-request :tag/create!)
+   {:user {:id user-id}
+    :tag {:name tag}}))
+
+(defn attach-tag! [user-id file-id tag]
+  ((build-request :tag/attach!)
+   {:user {:id user-id}
+    :file {:id file-id}
+    :tag {:name tag}}))
+
 ;;
-;; Reactions
+;; Data reactions
+;;
+
+(defn process-events [database datoms]
+  (let [[[eid operation & vals]] datoms]
+    (case operation
+      :tag/file
+      (let [[file _] vals]
+        (log* "************" (db/get-file-info database file))
+        (attach-tag! (:id (db/get-user database))
+                     (:file/id (db/get-file-info database file))
+                     (:tag/name (db/get-tag-name database eid))))
+      :tag/name
+      (create-tag! (:id (db/get-user database))
+                   (first vals))
+      nil)))
+
+;;
+;; Websocket Reactions
 ;;
 
 (defmethod client/-event-msg-handler :chsk/state

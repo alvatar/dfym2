@@ -20,8 +20,8 @@
   (update-tag! [self user-id tag] "Update a tag")
   (delete-tag! [self user-id tag] "Update a tag")
   ;; Tag links
-  (link-tag! [self user-id file-id tag] "Link a tag to a file")
-  (unlink-tag! [self user-id file-id tag] "Unlink a tag from a file"))
+  (attach-tag! [self user-id file-id tag] "Attach a tag to a file")
+  (detach-tag! [self user-id file-id tag] "Detach a tag from a file"))
 
 (defprotocol FileStorageAdapter
   "An adapter for file storages"

@@ -239,29 +239,34 @@ The folder chain has the following structure:
      (jdbc/query tr ["SELECT file_id, tag_id FROM files_tags WHERE files_tags.user_id = ?" user-id])]))
 
 (defn -create-tag! [user-id tag]
-  (jdbc/with-db-transaction
-    [tr db]
+  (jdbc/query db ["
+INSERT INTO tags (name, user_id)
+VALUES (?, ?)
+ON CONFLICT (name, user_id) DO NOTHING
+RETURNING id
+"
+                    tag user-id])
+  #_(jdbc/with-db-transaction
+      [tr db]
+      ;; The client sends transactions for the server to execute and keep in sync. The client then
+      ;; is able to freeze the last data (save it). This happens in the webworker.
 
-    ;; HERE!!! DELETE TAGS AND FILE TAGS
-    ;; The client sends transactions for the server to execute and keep in sync. The client then
-    ;; is able to freeze the last data (save it). This happens in the webworker.
-
-    ;; (doseq [tag tags]
-    ;;   (let [tag (assoc tag :user_id user-id)
-    ;;         result (jdbc/update! tr :tags tag
-    ;;                              ["name = ? AND user_id = ?" (:name tag) (:user_id tag)])]
-    ;;     (when (zero? (first result))
-    ;;       (println "inserting")
-    ;;       (jdbc/insert! tr :tags tag))))
-    ;; (doseq [file-tag files-tags]
-    ;;   (let [file-tag (-> file-tag
-    ;;                      ->kebab-case
-    ;;                      (assoc :user_id user-id))
-    ;;         result 'TODO #_(jdbc/update! tr :files_tags file-tag
-    ;;                              ["name = ? AND user_id = ?" (:name tag) (:user_id tag)])]
-    ;;     (when (zero? (first result))
-    ;;       (jdbc/insert! tr :files_tags file-tag))))
-    ))
+      ;; (doseq [tag tags]
+      ;;   (let [tag (assoc tag :user_id user-id)
+      ;;         result (jdbc/update! tr :tags tag
+      ;;                              ["name = ? AND user_id = ?" (:name tag) (:user_id tag)])]
+      ;;     (when (zero? (first result))
+      ;;       (println "inserting")
+      ;;       (jdbc/insert! tr :tags tag))))
+      ;; (doseq [file-tag files-tags]
+      ;;   (let [file-tag (-> file-tag
+      ;;                      ->kebab-case
+      ;;                      (assoc :user_id user-id))
+      ;;         result 'TODO #_(jdbc/update! tr :files_tags file-tag
+      ;;                              ["name = ? AND user_id = ?" (:name tag) (:user_id tag)])]
+      ;;     (when (zero? (first result))
+      ;;       (jdbc/insert! tr :files_tags file-tag))))
+      ))
 
 (defn -update-tag! [user-id tag]
   'TODO)
@@ -269,10 +274,16 @@ The folder chain has the following structure:
 (defn -delete-tag! [user-id tag]
   'TODO)
 
-(defn -link-tag! [user-id file-id tag]
-  'TODO)
+(defn -attach-tag! [user-id file-id tag]
+  (jdbc/query db ["
+INSERT INTO files_tags (file_id, tag_id, user_id)
+VALUES (?, (SELECT tags.id FROM tags WHERE name = ?), ?)
+ON CONFLICT (file_id, tag_id, user_id) DO NOTHING
+"
+                  file-id tag user-id])
+)
 
-(defn -unlink-tag! [user-id file-id tag]
+(defn -detach-tag! [user-id file-id tag]
   'TODO)
 
 ;;
@@ -337,11 +348,10 @@ The folder chain has the following structure:
     (-update-tag! user-id tag))
   (delete-tag! [self user-id tag]
     (-delete-tag! user-id tag))
-  ;; Tag links
-  (link-tag! [self user-id file-id tag]
-    (-link-tag! user-id file-id tag))
-  (unlink-tag! [self user-id file-id tag]
-    (-unlink-tag! user-id file-id tag)))
+  (attach-tag! [self user-id file-id tag]
+    (-attach-tag! user-id file-id tag))
+  (detach-tag! [self user-id file-id tag]
+    (-detach-tag! user-id file-id tag)))
 
 ;;
 ;; Development utilities
@@ -374,7 +384,7 @@ CREATE TABLE files (
   name            TEXT NOT NULL,
   path_display    TEXT NOT NULL,
   is_folder       BOOL NOT NULL,
-  dropbox_id      VARCHAR(256) NOT NULL,
+  dropbox_id      VARCHAR(256) NOT NULL UNIQUE,
   size            BIGINT
 )
 "
@@ -394,10 +404,10 @@ CREATE INDEX ON tags(name);
 "
                              "
 CREATE TABLE files_tags (
-  file_id         VARCHAR(256) REFERENCES files(id) ON DELETE CASCADE NOT NULL,
+  file_id         VARCHAR(256) REFERENCES files(dropbox_id) ON DELETE CASCADE NOT NULL,
   tag_id          INTEGER REFERENCES tags(id) ON DELETE CASCADE NOT NULL,
   user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-  UNIQUE (file_id, tag_id)
+  UNIQUE (file_id, tag_id, user_id)
 )
 "
                              ])

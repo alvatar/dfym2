@@ -66,6 +66,7 @@
 
 (defn format-tree [files-tree]
   (-> (letfn [(shrink-branch [m k v]
+                ;; We use the Dropbox Id + name
                 (let [{:keys [dropbox-id name]} (:fileinfo v)
                       children (dissoc v :fileinfo)]
                   (assoc m
@@ -114,6 +115,9 @@
 ;; Tags
 ;;
 
+(defn create-tag! [user-id tag]
+  (adapters/create-tag! repository user-id tag))
+
 ;; (defn get-tags [user-id]
 ;;   (adapters/get-tags repository user-id))
 
@@ -123,12 +127,8 @@
 ;; (defn delete-tag! [user-id tag]
 ;;   (adapters/delete-tag! repository user-id tag))
 
-;;
-;; Tag links
-;;
-
-;; (defn link-tag! [user-id file-id tag]
-;;   (adapters/link-tag! repository user-id file-id tag))
+(defn attach-tag! [user-id file-id tag]
+  (adapters/attach-tag! repository user-id file-id tag))
 
 ;; (defn unlink-tag! [user-id file-id tag]
 ;;   (adapters/unlink-tag! repository user-id file-id tag))
