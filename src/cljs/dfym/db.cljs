@@ -112,6 +112,14 @@
 
 ;; Files
 
+(defn push-current-folder []
+  (set-system-attrs! :previous-current-folder (get-system-attr :current-folder))
+  (set-system-attrs! :current-folder nil))
+
+(defn load-current-folder []
+  (set-system-attrs! :current-folder (get-system-attr :previous-current-folder))
+  (set-system-attrs! :previous-current-folder nil))
+
 (defn get-root [db]
   (d/q '[:find (pull ?file [:db/id :file/id :file/name]) .
          :where [?file :file/name "dropbox"]]
@@ -157,13 +165,45 @@
          [(get-else $ ?file :file/child false) ?folder?]]
        db))
 
+(defn get-search-files [db search-string]
+  (d/q '[:find ?file ?file-id ?file-name ?folder?
+         :in $ ?match
+         :where
+         [?file :file/id ?file-id]
+         [?file :file/name ?file-name]
+         [(?match ?file-name)]
+         [(get-else $ ?file :file/child false) ?folder?]]
+       db
+       (fn [s] (re-find (re-pattern search-string) s))))
+
 (defn get-current-folder [db]
   (first (get-system-attr :current-folder)))
 
-(defn get-current-folder-elements [db]
+(def search-filter (atom nil))
+
+(defn set-search-filter! [db search-string]
+  (reset! search-filter search-string)
+  (when-not (get-system-attr :previous-current-folder)
+    (push-current-folder)))
+
+(defn unset-search-filter! [db]
+  (reset! search-filter nil)
+  (log* "SEARCH FILTER" @search-filter)
+  (load-current-folder))
+
+(defn get-display-elements [db]
+  ;; If we don't have a search string and the current folder was disabled, it means
+  ;; we are abck to regular folder navigation
   (let [current-folder (get-current-folder db)]
-    (if current-folder
+    (cond
+      ;; Regular folder navigation
+      current-folder
       (get-folder-elements db current-folder)
+      ;; Search mode
+      (not-empty @search-filter)
+      (get-search-files db @search-filter)
+      ;; Filter mode
+      :else
       (get-filtered-files db))))
 
 (defn go-to-parent-folder! [db]
@@ -193,8 +233,7 @@
 
 (defn add-filter-tag! [tag]
   (when-not (get-system-attr :previous-current-folder)
-    (set-system-attrs! :previous-current-folder (get-system-attr :current-folder))
-    (set-system-attrs! :current-folder nil))
+    (push-current-folder))
   (d/transact! db [{:filter/tag tag}])
   true)
 
@@ -203,8 +242,7 @@
   (if (not-empty (get-filter-tags @db))
     (go-to-folder! (last (get-system-attr :current-folder)))
     ;; When we remove the last filter tag
-    (do (set-system-attrs! :current-folder (get-system-attr :previous-current-folder))
-        (set-system-attrs! :previous-current-folder nil)))
+    (load-current-folder))
   true)
 
 ;;

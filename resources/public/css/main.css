@@ -132,7 +132,7 @@ h3 {
     cursor: pointer;
 }
 
-.add-tag {
+.add-tag , .search-files {
     font-size: 18px;
     width: calc(100% - 20px);
     font-weight: normal;
@@ -142,6 +142,10 @@ h3 {
     border-style: solid;
     border-color: #aaa;
     border-width: 2px;
+}
+
+.search-files {
+    color: #111;
 }
 
 .add-tag:focus {

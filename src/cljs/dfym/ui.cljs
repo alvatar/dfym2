@@ -81,10 +81,15 @@
     (play user-id playlist next)))
 
 (defn build-playlist [db]
-  (->> (db/get-current-folder-elements db)
+  (->> (db/get-display-elements db)
        (sort-by #(nth % 2))))
 
-(rum/defc file-listing < rum/reactive [db]
+;; If defined as component state, it redraws and makes it too slow
+(def search-string (atom ""))
+
+(rum/defcs file-listing < rum/reactive
+  (rum/local "" ::search-filter)
+  [state db]
   (let [{user-id :id user-name :user-name} (db/get-user db)]
     [:div
      [:h2 "FILTERED FILES"
@@ -97,6 +102,15 @@
       [:div.top-operations {:on-click #(js/alert "select your ass!")} "Select_All ▦"]
       [:div.top-operations {:on-click #(js/alert "random shit in your fan!")}
        "Randomize ☲"]]
+     [:div {:style {:width "100%"}}
+      [:input.search-files {:type "text"
+                            :placeholder "Search..."
+                            :on-change (fn [] (swap! search-string #(dom/qval ".search-files")))
+                            :on-key-down
+                            #(when (= (.-keyCode %) 13)
+                               (if (empty? @search-string)
+                                 (db/unset-search-filter! db)
+                                 (db/set-search-filter! db @search-string)))}]]
      [:div.panel
       (let [playlist (build-playlist db)
             contents (for [[idx [eid file-id file-name folder?]] (map-indexed (fn [i e] [i e]) playlist)]
