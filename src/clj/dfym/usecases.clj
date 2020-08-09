@@ -118,8 +118,8 @@
 (defn create-tag! [user-id tag]
   (adapters/create-tag! repository user-id tag))
 
-;; (defn get-tags [user-id]
-;;   (adapters/get-tags repository user-id))
+(defn get-tags [user-id]
+  (adapters/get-tags repository user-id))
 
 ;; (defn update-tag! [user-id tag]
 ;;   (adapters/update-tag! repository user-id tag))
@@ -130,5 +130,5 @@
 (defn attach-tag! [user-id file-id tag]
   (adapters/attach-tag! repository user-id file-id tag))
 
-;; (defn unlink-tag! [user-id file-id tag]
-;;   (adapters/unlink-tag! repository user-id file-id tag))
+;; (defn detach-tag! [user-id file-id tag]
+;;   (adapters/detach-tag! repository user-id file-id tag))

@@ -87,11 +87,11 @@
 
 ;; Tags
 
-;; (defmethod -event-msg-handler :tags/get
-;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-;;   (?reply-fn (if (authorized-user? ev-msg)
-;;                (usecases/get-tags (get-in ?data [:user :id]))
-;;                error-unauthorized)))
+(defmethod -event-msg-handler :tags/get
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+  (?reply-fn (if (authorized-user? ev-msg)
+               (usecases/get-tags (get-in ?data [:user :id]))
+               error-unauthorized)))
 
 ;; (defmethod -event-msg-handler :tag/update!
 ;;   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]

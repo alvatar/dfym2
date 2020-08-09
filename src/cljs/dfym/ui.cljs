@@ -89,7 +89,9 @@
     [:div
      [:h2 "FILTERED FILES"
       [:div.top-operations {:style {:font-weight "normal"}} "[Logged in as: " user-name "]"]
-      [:div.top-operations {:on-click #(actions/get-files user-id)}
+      [:div.top-operations {:on-click (fn []
+                                        (actions/pull-files! user-id)
+                                        (actions/pull-tags! user-id))}
        "Refresh ◌"]
       [:div.top-operations {:on-click #(js/alert "I don't wanna")} "Deselect_All □"]
       [:div.top-operations {:on-click #(js/alert "select your ass!")} "Select_All ▦"]

@@ -24,18 +24,17 @@
          (do (when handler (handler resp))
              (when cb (cb resp)))
          (do (log* resp)
-             (log/errorf "Ups... Error in %s ¯\\_(ツ)_/¯ Restart the app, please...")))))))
+             (log/error "Ups... Error in %s ¯\\_(ツ)_/¯ Restart the app, please...")))))))
 
 (defn logout []
   (oset! js/window "location.href" "/logout"))
 
-;; (defn get-user [user]
-;;   ((build-request :user/get
-;;                   (fn [result] (log* "TODO " result)))
-;;    {:user {:id user}}))
-
-(defn get-files [user-id]
+(defn pull-files! [user-id]
   ((build-request :files/get (fn [result] (db/set-files! result)))
+   {:user {:id user-id}}))
+
+(defn pull-tags! [user-id]
+  ((build-request :tags/get (fn [[tags files-tags]] (db/set-tags! tags files-tags)))
    {:user {:id user-id}}))
 
 (defn get-file-link [user-id file-id cb]
@@ -64,7 +63,6 @@
     (case operation
       :tag/file
       (let [[file _] vals]
-        (log* "************" (db/get-file-info database file))
         (attach-tag! (:id (db/get-user database))
                      (:file/id (db/get-file-info database file))
                      (:tag/name (db/get-tag-name database eid))))

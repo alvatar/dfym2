@@ -69,10 +69,6 @@
 
 ;; Tags
 
-(defn create-tag! [name]
-  (d/transact! db [{:tag/name name}])
-  true)
-
 (defn get-tags [db]
   (d/q '[:find ?e ?tag
          :where
@@ -81,6 +77,25 @@
 
 (defn get-tag-name [db eid]
   (d/pull db [:tag/name] eid))
+
+(defn create-tag! [name]
+  (d/transact! db [{:tag/name name}])
+  true)
+
+(defn set-tags! [tags files-tags]
+  "Sets the tags received from the server"
+  ;; This function needs to convert the tags provided as a list of indexes external to this db
+  (let [server-id-tag-tuples (for [{:keys [id name]} tags] [id name])
+        tag-server-id->name (into {} server-id-tag-tuples)]
+    ;; Insert the tags, then extract them to obtain the internal IDs
+    (d/transact! db (for [[id name] server-id-tag-tuples] {:tag/name name}))
+    (d/transact! db (for [{:keys [file_id tag_id]} files-tags]
+                      {:tag/name (get tag-server-id->name tag_id)
+                       :tag/file (d/q '[:find ?e .
+                                        :in $ ?file-id
+                                        :where
+                                        [?e :file/id ?file-id]]
+                                      @db file_id)}))))
 
 (defn update-tag! [[id tag]]
   'TODO)
@@ -161,7 +176,8 @@
         (= (first current-folder) "id:dropbox"))))
 
 (defn set-files! [files]
-  "This function expects the data as {:name [id children]}"
+  "Sets the files received from the server.
+   This function expects the data as {:name [id children]}"
   (d/transact! db [files])
   ;; id:dropbox is the root id for this remote drive
   (go-to-folder! "id:dropbox"))
@@ -195,16 +211,7 @@
 ;; Main init function
 ;;
 
-(defn db-listener [tx-listener-callback]
-  (fn [tx-report]
-    (let [tx-id  (get-in tx-report [:tempids :db/current-tx])
-          datoms (:tx-data tx-report)]
-      (tx-listener-callback @db datoms)
-      (log* "TRANSACTIONS: " datoms))))
-
-(defn init! [tx-listener-callback]
+(defn init! []
   "Initialize all the resources required by the DB. Call only once."
   (def db (d/create-conn schema))
-  (load-db!)
-  ;; Log of transactions
-  (d/listen! db :log (db-listener tx-listener-callback)))
+  (load-db!))

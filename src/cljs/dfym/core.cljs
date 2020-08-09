@@ -33,7 +33,8 @@
                              {:print-string print-string-handler
                               :print-array print-array-handler}))
 
-  (db/init! actions/process-events)
+  (db/init!)
+
   ;; Render on every DB change
   (d/listen! db/db :render
              (fn [tx-report]
@@ -53,6 +54,21 @@
                  (js/setTimeout #(butler/work! worker
                                                :persist-db (db/db->string db))
                                 500))))
+
+  ;; Log db changes
+  (d/listen! db/db :log
+             (fn [tx-report]
+               (let [tx-id  (get-in tx-report [:tempids :db/current-tx])
+                     datoms (:tx-data tx-report)]
+                 (log* "TRANSACTIONS: " datoms))))
+
+  ;; Process db changes
+  (d/listen! db/db :process-events
+             (fn [tx-report]
+               (let [tx-id  (get-in tx-report [:tempids :db/current-tx])
+                     datoms (:tx-data tx-report)]
+                 (actions/process-events @db/db datoms))))
+
   (globals/init!)
   (ui/init!)
   (client/start-router!))
