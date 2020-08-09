@@ -30,4 +30,5 @@
 (defn -main [& [port ip]]
   (let [s (system {:ip ip :port port})]
     (component/start s)
-    (aleph.netty/wait-for-close (get-in s [:server :aleph]))))
+    ;;(aleph.netty/wait-for-close (get-in s [:server :aleph]))
+    ))

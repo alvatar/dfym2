@@ -6,6 +6,11 @@
    [dfym.fixtures :as fixtures]
    [dfym.utils :as utils :refer [log*]]))
 
+;; Some references
+;; https://github.com/stathissideris/datascript-dom/blob/master/src/datascript_dom/core.clj
+;; https://github.com/tonsky/datascript-todo/blob/gh-pages/src/datascript_todo/core.cljs
+;; https://docs.datomic.com/on-prem/query.html
+
 (declare db)
 
 (def ^:const db-name "dfym/db")
